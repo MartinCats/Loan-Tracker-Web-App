@@ -7,7 +7,7 @@ export const previewLoans: Loan[] = [
     borrowerName: "Mina Ch.",
     principal: 12500,
     interestRate: 8,
-    paymentCycle: "monthly",
+    paymentCycle: "every_10_days",
     currentDueDate: "2026-05-24",
     accumulatedProfit: 2400,
     unpaidInterest: 0,

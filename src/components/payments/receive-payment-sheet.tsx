@@ -15,6 +15,7 @@ type ReceivePaymentSheetProps = {
   totalDue: number;
   unpaidInterest?: number;
   disabled?: boolean;
+  label?: string;
 };
 
 export function ReceivePaymentSheet({
@@ -22,6 +23,7 @@ export function ReceivePaymentSheet({
   totalDue,
   unpaidInterest = 0,
   disabled,
+  label = "Receive payment",
 }: ReceivePaymentSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -36,7 +38,7 @@ export function ReceivePaymentSheet({
         type="button"
       >
         <span aria-hidden="true">+</span>
-        Receive
+        {label}
       </button>
 
       {isOpen ? (
@@ -44,7 +46,7 @@ export function ReceivePaymentSheet({
           <section
             aria-label="Receive payment"
             aria-modal="true"
-            className="sheet"
+            className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
@@ -62,7 +64,7 @@ export function ReceivePaymentSheet({
               </button>
             </div>
 
-            <form action={formAction} className="auth-form">
+            <form action={formAction} className="auth-form auth-form--compact">
               <input name="loanId" type="hidden" value={loanId} />
 
               <label className="field">

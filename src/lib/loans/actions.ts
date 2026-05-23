@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { CreateLoanInput, LoanInsert } from "@/lib/loans/types";
+import { paymentCycleOptions } from "@/lib/loans/payment-cycle";
 import { isPreviewMode } from "@/lib/preview";
 import type { PaymentCycle } from "@/lib/types/loan";
 
@@ -12,7 +13,10 @@ export type LoanActionState = {
   message: string;
 };
 
-const paymentCycles: PaymentCycle[] = ["weekly", "biweekly", "monthly"];
+const paymentCycles: PaymentCycle[] = [
+  ...paymentCycleOptions.map((option) => option.value),
+  "biweekly",
+];
 
 function getNumberValue(formData: FormData, name: string) {
   const value = Number(formData.get(name));

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
+import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
 import type { Loan } from "@/lib/types/loan";
 import { ArchiveLoanButton } from "@/components/loans/archive-loan-button";
 
@@ -24,7 +25,7 @@ export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
           {loan.borrowerName}
         </h3>
         <p>
-          {loan.paymentCycle} -{" "}
+          {formatPaymentCycle(loan.paymentCycle)} -{" "}
           <DueDateLabel dueDate={loan.currentDueDate} todayDate={todayDate} />
         </p>
         {mode === "active" && loan.unpaidInterest > 0 ? (

@@ -1,4 +1,3 @@
-import { CreateLoanSheet } from "@/components/loans/create-loan-sheet";
 import { LoanBrowser } from "@/components/loans/loan-browser";
 import { PageHeader } from "@/components/ui/page-header";
 import { getTodayDateKey } from "@/lib/loans/urgency";
@@ -14,7 +13,6 @@ export default async function LoansPage() {
         eyebrow="Active book"
         title="Loans"
         description="Create and manage active loans stored in Supabase."
-        action={<CreateLoanSheet />}
       />
 
       <section className="panel">

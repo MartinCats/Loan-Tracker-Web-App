@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
 import { ReceivePaymentSheet } from "@/components/payments/receive-payment-sheet";
 import { PaymentTimeline } from "@/components/payments/payment-timeline";
-import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getTodayDateKey } from "@/lib/loans/urgency";
+import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
+import { formatDueLabel, getTodayDateKey } from "@/lib/loans/urgency";
 import { calculateExpectedDue, calculateTotalDue } from "@/lib/payments/calculator";
 import { getLoanDetail } from "@/lib/payments/queries";
 
@@ -36,9 +35,6 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
         <section className="panel empty-state empty-state--error">
           <h2>Could not load loan</h2>
           <p>{error}</p>
-          <Link className="text-button" href="/loans">
-            Back to loans
-          </Link>
         </section>
       </main>
     );
@@ -48,39 +44,76 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
   const totalDue = calculateTotalDue(loan);
   const isClosed = loan.status === "closed";
   const todayDate = getTodayDateKey();
+  const paymentCycle = formatPaymentCycle(loan.paymentCycle);
+  const dueLabel = formatDueLabel(loan.currentDueDate, todayDate);
 
   return (
-    <main className="page-stack">
-      <Link className="back-link" href="/loans">
-        Back to loans
-      </Link>
-
+    <main className="page-stack loan-detail-stack">
       <PageHeader
         eyebrow={isClosed ? "Closed loan" : "Active loan"}
         title={loan.borrowerName}
-        description={`${loan.paymentCycle} cycle - ${isClosed ? "closed" : "due"} ${loan.currentDueDate}`}
-        action={
-          <ReceivePaymentSheet
-            disabled={isClosed}
-            loanId={loan.id}
-            totalDue={totalDue}
-            unpaidInterest={loan.unpaidInterest}
-          />
-        }
+        description={`${paymentCycle} cycle - ${isClosed ? "Closed" : "Due"} ${
+          loan.currentDueDate
+        }`}
       />
 
       <section className="loan-detail-status">
         <LoanStatusPill loan={loan} todayDate={todayDate} />
-        <span>
-          <DueDateLabel dueDate={loan.currentDueDate} todayDate={todayDate} />
-        </span>
+        <span>{dueLabel}</span>
       </section>
 
-      <section className="metric-grid" aria-label="Loan payment metrics">
-        <MetricCard label="Current Due" tone="gold" value={money.format(totalDue)} />
-        <MetricCard label="Expected Due" value={money.format(expectedDue)} />
-        <MetricCard label="Unpaid Interest" value={money.format(loan.unpaidInterest)} />
-        <MetricCard label="Credit Balance" value={money.format(loan.creditBalance)} />
+      <section className="panel loan-overview" aria-label="Loan overview">
+        <div className="section-heading">
+          <div>
+            <h2>Loan overview</h2>
+            <p>Core loan terms.</p>
+          </div>
+        </div>
+        <div className="overview-grid">
+          <div className="overview-item overview-item--strong">
+            <span>Principal borrowed</span>
+            <strong>{money.format(loan.principal)}</strong>
+          </div>
+          <div className="overview-item">
+            <span>Interest rate</span>
+            <strong>{loan.interestRate}%</strong>
+          </div>
+          <div className="overview-item">
+            <span>Payment cycle</span>
+            <strong className="cycle-pill cycle-pill--large">{paymentCycle}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel balance-section" aria-label="Current balances">
+        <div className="section-heading">
+          <div>
+            <h2>Current balances</h2>
+            <p>Due amounts and received profit.</p>
+          </div>
+        </div>
+        <div className="balance-grid">
+          <div className="balance-card balance-card--primary">
+            <span>Current Due</span>
+            <strong>{money.format(totalDue)}</strong>
+          </div>
+          <div className="balance-card">
+            <span>Expected Due</span>
+            <strong>{money.format(expectedDue)}</strong>
+          </div>
+          <div className="balance-card">
+            <span>Unpaid Interest</span>
+            <strong>{money.format(loan.unpaidInterest)}</strong>
+          </div>
+          <div className="balance-card">
+            <span>Credit Balance</span>
+            <strong>{money.format(loan.creditBalance)}</strong>
+          </div>
+          <div className="balance-card">
+            <span>Accumulated Profit</span>
+            <strong>{money.format(loan.accumulatedProfit)}</strong>
+          </div>
+        </div>
       </section>
 
       {isClosed ? (
@@ -109,13 +142,19 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
       </section>
 
       {!isClosed ? (
-        <div className="mobile-sticky-cta">
+        <section className="panel quick-action-panel">
+          <div className="section-heading">
+            <div>
+              <h2>Quick actions</h2>
+              <p>Payment actions</p>
+            </div>
+          </div>
           <ReceivePaymentSheet
             loanId={loan.id}
             totalDue={totalDue}
             unpaidInterest={loan.unpaidInterest}
           />
-        </div>
+        </section>
       ) : null}
     </main>
   );

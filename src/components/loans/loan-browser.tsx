@@ -10,8 +10,8 @@ import {
 } from "@/lib/loans/urgency";
 import type { Loan } from "@/lib/types/loan";
 
-type LoanFilter = "active" | "overdue" | "due-soon";
-type LoanSort = "urgency" | "due-date" | "principal" | "borrower";
+type LoanFilter = "all" | "overdue" | "due-today" | "upcoming";
+type LoanSort = "urgency" | "name" | "principal" | "due-date";
 
 type LoanBrowserState = {
   search: string;
@@ -20,16 +20,17 @@ type LoanBrowserState = {
 };
 
 const filterOptions: Array<{ label: string; value: LoanFilter }> = [
-  { label: "Active", value: "active" },
+  { label: "All", value: "all" },
   { label: "Overdue", value: "overdue" },
-  { label: "Due soon", value: "due-soon" },
+  { label: "Due today", value: "due-today" },
+  { label: "Upcoming", value: "upcoming" },
 ];
 
 const sortOptions: Array<{ label: string; value: LoanSort }> = [
   { label: "Urgency", value: "urgency" },
-  { label: "Due date", value: "due-date" },
+  { label: "Name", value: "name" },
   { label: "Principal", value: "principal" },
-  { label: "Borrower", value: "borrower" },
+  { label: "Due date", value: "due-date" },
 ];
 
 export function LoanBrowser({
@@ -41,7 +42,7 @@ export function LoanBrowser({
 }) {
   const [state, setState] = useState<LoanBrowserState>({
     search: "",
-    filter: "active",
+    filter: "all",
     sort: "urgency",
   });
 
@@ -58,8 +59,12 @@ export function LoanBrowser({
           return getLoanUrgency(loan, todayDate) === "overdue";
         }
 
-        if (state.filter === "due-soon") {
-          return getLoanUrgency(loan, todayDate) === "due-soon";
+        if (state.filter === "due-today") {
+          return getDaysUntilDue(loan.currentDueDate, todayDate) === 0;
+        }
+
+        if (state.filter === "upcoming") {
+          return getDaysUntilDue(loan.currentDueDate, todayDate) > 0;
         }
 
         return loan.status === "active";
@@ -69,7 +74,7 @@ export function LoanBrowser({
 
   return (
     <div className="loan-browser plain-loan-browser">
-      <div className="plain-controls">
+      <div className="compact-browser-controls">
         <label className="plain-field">
           <span>Search</span>
           <input
@@ -84,13 +89,13 @@ export function LoanBrowser({
           />
         </label>
 
-        <div className="plain-field">
+        <div className="chip-group">
           <span>Sort</span>
-          <div className="plain-button-row" role="group" aria-label="Sort loans">
+          <div className="chip-scroll" role="group" aria-label="Sort loans">
             {sortOptions.map((option) => (
               <button
                 aria-pressed={state.sort === option.value}
-                className={`plain-button${state.sort === option.value ? " is-active" : ""}`}
+                className={`chip-button${state.sort === option.value ? " is-active" : ""}`}
                 key={option.value}
                 onClick={() =>
                   setState((current) => ({ ...current, sort: option.value }))
@@ -104,25 +109,28 @@ export function LoanBrowser({
         </div>
       </div>
 
-      <div className="plain-button-row" role="group" aria-label="Loan filters">
-        {filterOptions.map((option) => (
-          <button
-            aria-pressed={state.filter === option.value}
-            className={`plain-button${state.filter === option.value ? " is-active" : ""}`}
-            key={option.value}
-            onClick={() =>
-              setState((current) => ({ ...current, filter: option.value }))
-            }
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="chip-group">
+        <span>Filter</span>
+        <div className="chip-scroll" role="group" aria-label="Loan filters">
+          {filterOptions.map((option) => (
+            <button
+              aria-pressed={state.filter === option.value}
+              className={`chip-button${state.filter === option.value ? " is-active" : ""}`}
+              key={option.value}
+              onClick={() =>
+                setState((current) => ({ ...current, filter: option.value }))
+              }
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <LoanList
         emptyAction={
-          state.filter === "active" && !state.search ? (
+          state.filter === "all" && !state.search ? (
             null
           ) : state.search ? (
             <button
@@ -148,7 +156,7 @@ function sortLoans(a: Loan, b: Loan, sort: LoanSort, todayDate: string) {
   switch (sort) {
     case "principal":
       return b.principal - a.principal;
-    case "borrower":
+    case "name":
       return a.borrowerName.localeCompare(b.borrowerName);
     case "due-date":
       return (
@@ -174,8 +182,12 @@ function getEmptyTitle(filter: LoanFilter, search: string) {
     return "No overdue loans";
   }
 
-  if (filter === "due-soon") {
-    return "Nothing due soon";
+  if (filter === "due-today") {
+    return "Nothing due today";
+  }
+
+  if (filter === "upcoming") {
+    return "No upcoming loans";
   }
 
   return "No active loans";
@@ -186,11 +198,13 @@ function getEmptyDescription(filter: LoanFilter, search: string) {
     return "Try another borrower name or clear the search.";
   }
 
-  const descriptions: Record<LoanUrgency | "active", string> = {
-    active: "Add a loan to begin tracking principal, due date, and profit.",
+  const descriptions: Record<LoanUrgency | "all" | "due-today" | "upcoming", string> = {
+    all: "Create new loans from the Dashboard when you are ready.",
     overdue: "Good. No active loans are currently past due.",
-    "due-soon": "No active loans are due in the next few days.",
+    "due-today": "No active loans are due today.",
+    upcoming: "No active loans have future due dates.",
     healthy: "No active loans are currently past due.",
+    "due-soon": "No active loans are due in the next few days.",
   };
 
   return descriptions[filter];

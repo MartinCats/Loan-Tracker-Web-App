@@ -1,6 +1,11 @@
 export type LoanStatus = "active" | "closed";
 
-export type PaymentCycle = "weekly" | "biweekly" | "monthly";
+export type PaymentCycle =
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "every_10_days"
+  | "monthly";
 
 export type Loan = {
   id: string;

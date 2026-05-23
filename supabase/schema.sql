@@ -13,7 +13,9 @@ create table if not exists public.loans (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint loans_status_check check (status in ('active', 'closed')),
-  constraint loans_payment_cycle_check check (payment_cycle in ('weekly', 'biweekly', 'monthly')),
+  constraint loans_payment_cycle_check check (
+    payment_cycle in ('daily', 'weekly', 'biweekly', 'every_10_days', 'monthly')
+  ),
   constraint loans_principal_check check (principal >= 0),
   constraint loans_interest_rate_check check (interest_rate >= 0),
   constraint loans_accumulated_profit_check check (accumulated_profit >= 0),
@@ -26,6 +28,14 @@ add column if not exists unpaid_interest numeric not null default 0;
 
 alter table public.loans
 add column if not exists credit_balance numeric not null default 0;
+
+alter table public.loans
+drop constraint if exists loans_payment_cycle_check;
+
+alter table public.loans
+add constraint loans_payment_cycle_check check (
+  payment_cycle in ('daily', 'weekly', 'biweekly', 'every_10_days', 'monthly')
+);
 
 alter table public.loans enable row level security;
 

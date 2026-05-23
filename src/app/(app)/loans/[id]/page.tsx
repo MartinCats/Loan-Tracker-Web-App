@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
+import { RescheduleLoanSheet } from "@/components/loans/reschedule-loan-sheet";
 import { ReceivePaymentSheet } from "@/components/payments/receive-payment-sheet";
 import { PaymentTimeline } from "@/components/payments/payment-timeline";
 import { PageHeader } from "@/components/ui/page-header";
@@ -146,13 +147,17 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
           <div className="section-heading">
             <div>
               <h2>Quick actions</h2>
-              <p>Payment actions</p>
+              <p>Payment and due-date actions</p>
             </div>
           </div>
           <ReceivePaymentSheet
             loanId={loan.id}
             totalDue={totalDue}
             unpaidInterest={loan.unpaidInterest}
+          />
+          <RescheduleLoanSheet
+            loanId={loan.id}
+            currentDueDate={loan.currentDueDate}
           />
         </section>
       ) : null}

@@ -64,6 +64,29 @@ function parseCreateLoan(formData: FormData):
   };
 }
 
+function parseRescheduleLoan(formData: FormData):
+  | { ok: true; input: { loanId: string; currentDueDate: string } }
+  | { ok: false; message: string } {
+  const loanId = String(formData.get("loanId") ?? "").trim();
+  const currentDueDate = String(formData.get("currentDueDate") ?? "").trim();
+
+  if (!loanId) {
+    return { ok: false, message: "Loan is missing." };
+  }
+
+  if (!currentDueDate) {
+    return { ok: false, message: "Choose the new due date." };
+  }
+
+  return {
+    ok: true,
+    input: {
+      loanId,
+      currentDueDate,
+    },
+  };
+}
+
 type AuthenticatedSupabase =
   | {
       supabase: SupabaseClient;
@@ -210,4 +233,53 @@ export async function archiveLoanWithState(
   revalidatePath(`/loans/${loanId}`);
 
   return { status: "success", message: "Loan archived." };
+}
+
+export async function rescheduleLoanAction(
+  _prevState: LoanActionState,
+  formData: FormData,
+): Promise<LoanActionState> {
+  if (isPreviewMode()) {
+    return {
+      status: "success",
+      message: "Preview Mode: reschedule is simulated and not saved.",
+    };
+  }
+
+  const parsed = parseRescheduleLoan(formData);
+
+  if (!parsed.ok) {
+    return { status: "error", message: parsed.message };
+  }
+
+  const auth = await getAuthenticatedSupabase();
+
+  if ("error" in auth) {
+    return { status: "error", message: auth.error };
+  }
+
+  const { data, error } = await auth.supabase
+    .from("loans")
+    .update({ current_due_date: parsed.input.currentDueDate })
+    .eq("id", parsed.input.loanId)
+    .eq("user_id", auth.user.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { status: "error", message: error.message };
+  }
+
+  if (!data) {
+    return {
+      status: "error",
+      message: "Only active loans can be rescheduled.",
+    };
+  }
+
+  revalidateLoanViews();
+  revalidatePath(`/loans/${parsed.input.loanId}`);
+
+  return { status: "success", message: "Due date updated." };
 }

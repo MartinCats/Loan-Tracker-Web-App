@@ -11,16 +11,25 @@ export type Loan = {
   paymentCycle: PaymentCycle;
   currentDueDate: string;
   accumulatedProfit: number;
+  unpaidInterest: number;
+  creditBalance: number;
   status: LoanStatus;
   createdAt: string;
   updatedAt: string;
 };
 
+export type PaymentHistoryType =
+  | "payment_received"
+  | "partial_payment"
+  | "overpayment"
+  | "reschedule"
+  | "loan_closed";
+
 export type PaymentHistory = {
   id: string;
   userId: string;
   loanId: string;
-  type: "payment" | "reschedule" | "close";
+  type: PaymentHistoryType;
   amount: number;
   note?: string;
   createdAt: string;

@@ -3,9 +3,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Loan Tracker",
-  description: "Standalone PWA foundation for personal loan tracking.",
+  description: "Standalone PWA for personal loan and interest tracking.",
   applicationName: "Loan Tracker",
   manifest: "/manifest.webmanifest",
+  formatDetection: {
+    telephone: false,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -18,7 +21,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121922",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#121922" },
+    { media: "(prefers-color-scheme: light)", color: "#121922" },
+  ],
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,

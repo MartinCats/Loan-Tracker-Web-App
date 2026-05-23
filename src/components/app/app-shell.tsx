@@ -1,6 +1,9 @@
 import { BottomNav } from "@/components/app/bottom-nav";
 
-export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
+export function AppShell({
+  children,
+  isPreviewMode = false,
+}: Readonly<{ children: React.ReactNode; isPreviewMode?: boolean }>) {
   return (
     <div className="app-frame">
       <div className="app-chrome">
@@ -8,8 +11,9 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           <div>
             <p className="eyebrow">Loan Tracker</p>
             <h1>Personal lending</h1>
+            {isPreviewMode ? <span className="preview-badge">Preview Mode</span> : null}
           </div>
-          <a className="profile-button" href="/auth/sign-in" aria-label="Open sign in">
+          <a className="profile-button" href="/settings" aria-label="Open settings">
             LT
           </a>
         </header>

@@ -1,12 +1,17 @@
 {
   "name": "Loan Tracker",
   "short_name": "Loans",
-  "description": "Standalone personal loan tracking PWA.",
+  "description": "Standalone personal loan and interest tracking PWA.",
+  "id": "/dashboard",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0b0f13",
-  "theme_color": "#0b0f13",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#121922",
+  "theme_color": "#121922",
   "orientation": "portrait",
+  "lang": "en",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "/icons/icon.svg",

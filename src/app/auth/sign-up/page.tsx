@@ -1,16 +1,21 @@
-import { ActionButton } from "@/components/ui/action-button";
+import Link from "next/link";
+import { signUpAction } from "@/app/auth/actions";
+import { AuthForm } from "@/components/auth/auth-form";
 
 export default function SignUpPage() {
   return (
     <main className="auth-page">
       <section className="auth-panel">
-        <p className="eyebrow">Phase 1</p>
-        <h1>Create account shell</h1>
+        <p className="eyebrow">Email sign up</p>
+        <h1>Create account</h1>
         <p>
-          Account creation is a visual placeholder until Supabase auth and RLS
-          policies are implemented.
+          Start with email and password. If confirmation is enabled, Supabase
+          will require email verification before sign in.
         </p>
-        <ActionButton href="/dashboard">Preview app</ActionButton>
+        <AuthForm action={signUpAction} mode="sign-up" />
+        <p className="auth-switch">
+          Already have access? <Link href="/auth/sign-in">Sign in</Link>
+        </p>
       </section>
     </main>
   );

@@ -15,7 +15,9 @@ export function BottomNav() {
   return (
     <nav className="bottom-nav" aria-label="Primary navigation">
       {appRoutes.map((route) => {
-        const isActive = pathname === route.href;
+        const isActive =
+          pathname === route.href ||
+          (route.href !== "/dashboard" && pathname.startsWith(`${route.href}/`));
 
         return (
           <Link

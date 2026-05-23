@@ -1,42 +1,31 @@
-import { ActionButton } from "@/components/ui/action-button";
+import { CreateLoanSheet } from "@/components/loans/create-loan-sheet";
+import { LoanBrowser } from "@/components/loans/loan-browser";
 import { PageHeader } from "@/components/ui/page-header";
-import { loanPreview } from "@/lib/mock/dashboard";
+import { getTodayDateKey } from "@/lib/loans/urgency";
+import { getLoans } from "@/lib/loans/queries";
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+export default async function LoansPage() {
+  const { loans, error } = await getLoans("active");
+  const todayDate = getTodayDateKey();
 
-export default function LoansPage() {
   return (
     <main className="page-stack">
       <PageHeader
         eyebrow="Active book"
         title="Loans"
-        description="CRUD is intentionally paused for Phase 2. This screen establishes the list density and action placement."
-        action={<ActionButton href="/loans">Add</ActionButton>}
+        description="Create and manage active loans stored in Supabase."
+        action={<CreateLoanSheet />}
       />
 
       <section className="panel">
-        <div className="loan-list">
-          {loanPreview
-            .filter((loan) => loan.status === "active")
-            .map((loan) => (
-              <article className="loan-row loan-row--tall" key={loan.id}>
-                <div>
-                  <h3>{loan.borrowerName}</h3>
-                  <p>
-                    {loan.paymentCycle} - due {loan.currentDueDate}
-                  </p>
-                </div>
-                <div className="loan-row__meta">
-                  <span>Principal</span>
-                  <strong>{money.format(loan.principal)}</strong>
-                </div>
-              </article>
-            ))}
-        </div>
+        {error ? (
+          <div className="empty-state empty-state--error">
+            <h3>Could not load loans</h3>
+            <p>{error}</p>
+          </div>
+        ) : (
+          <LoanBrowser loans={loans} todayDate={todayDate} />
+        )}
       </section>
     </main>
   );

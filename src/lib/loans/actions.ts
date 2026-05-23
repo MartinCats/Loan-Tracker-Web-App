@@ -242,7 +242,7 @@ export async function rescheduleLoanAction(
   if (isPreviewMode()) {
     return {
       status: "success",
-      message: "Preview Mode: reschedule is simulated and not saved.",
+      message: "Preview mode: reschedule simulated.",
     };
   }
 

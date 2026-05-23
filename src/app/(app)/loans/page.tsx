@@ -1,5 +1,4 @@
-import { LoanBrowser } from "@/components/loans/loan-browser";
-import { PageHeader } from "@/components/ui/page-header";
+import { LoansPageContent } from "@/components/loans/loans-page-content";
 import { getTodayDateKey } from "@/lib/loans/urgency";
 import { getLoans } from "@/lib/loans/queries";
 
@@ -8,23 +7,6 @@ export default async function LoansPage() {
   const todayDate = getTodayDateKey();
 
   return (
-    <main className="page-stack">
-      <PageHeader
-        eyebrow="Active book"
-        title="Loans"
-        description="Create and manage active loans stored in Supabase."
-      />
-
-      <section className="panel">
-        {error ? (
-          <div className="empty-state empty-state--error">
-            <h3>Could not load loans</h3>
-            <p>{error}</p>
-          </div>
-        ) : (
-          <LoanBrowser loans={loans} todayDate={todayDate} />
-        )}
-      </section>
-    </main>
+    <LoansPageContent error={error} initialLoans={loans} todayDate={todayDate} />
   );
 }

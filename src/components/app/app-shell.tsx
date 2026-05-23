@@ -1,10 +1,11 @@
 import { BottomNav } from "@/components/app/bottom-nav";
+import { PreviewProvider } from "@/components/preview/preview-store";
 
 export function AppShell({
   children,
   isPreviewMode = false,
 }: Readonly<{ children: React.ReactNode; isPreviewMode?: boolean }>) {
-  return (
+  const shell = (
     <div className="app-frame">
       <div className="app-chrome">
         <header className="top-bar">
@@ -22,5 +23,11 @@ export function AppShell({
         <BottomNav />
       </div>
     </div>
+  );
+
+  return isPreviewMode ? (
+    <PreviewProvider>{shell}</PreviewProvider>
+  ) : (
+    shell
   );
 }

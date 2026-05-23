@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { type FormEvent, useActionState, useState } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { usePreviewStore } from "@/components/preview/preview-store";
 import { receivePaymentAction } from "@/lib/payments/actions";
 import type { PaymentActionState } from "@/lib/payments/types";
 
@@ -25,21 +26,50 @@ export function ReceivePaymentSheet({
   disabled,
   label = "Receive payment",
 }: ReceivePaymentSheetProps) {
+  const previewStore = usePreviewStore();
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [previewMessage, setPreviewMessage] = useState("");
   const [state, formAction] = useActionState(receivePaymentAction, initialState);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!previewStore) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const paymentAmount = Number(new FormData(event.currentTarget).get("amount"));
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      setPreviewMessage("Preview mode: enter a valid payment amount.");
+      return;
+    }
+
+    previewStore.receivePayment(loanId, paymentAmount);
+    setPreviewMessage("Preview mode: payment simulated.");
+    setAmount("");
+    setIsOpen(false);
+  }
 
   return (
     <>
-      <button
-        className="action-button"
-        disabled={disabled}
-        onClick={() => setIsOpen(true)}
-        type="button"
-      >
-        <span aria-hidden="true">+</span>
-        {label}
-      </button>
+      <div className="sheet-trigger-group">
+        <button
+          className="action-button"
+          disabled={disabled}
+          onClick={() => setIsOpen(true)}
+          type="button"
+        >
+          <span aria-hidden="true">+</span>
+          {label}
+        </button>
+        {!isOpen && previewMessage ? (
+          <p className="auth-message is-success" role="status">
+            {previewMessage}
+          </p>
+        ) : null}
+      </div>
 
       {isOpen ? (
         <div className="sheet-backdrop" role="presentation">
@@ -64,7 +94,11 @@ export function ReceivePaymentSheet({
               </button>
             </div>
 
-            <form action={formAction} className="auth-form auth-form--compact">
+            <form
+              action={previewStore ? undefined : formAction}
+              className="auth-form auth-form--compact"
+              onSubmit={handleSubmit}
+            >
               <input name="loanId" type="hidden" value={loanId} />
 
               <label className="field">

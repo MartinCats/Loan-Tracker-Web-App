@@ -949,6 +949,11 @@ a,
   gap: var(--space-sm);
 }
 
+.sheet-trigger-group {
+  display: grid;
+  gap: var(--space-xs);
+}
+
 .sheet--compact .sheet-actions {
   position: sticky;
   bottom: 0;

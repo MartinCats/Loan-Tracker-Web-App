@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Loan Tracker">
+  <rect width="512" height="512" rx="112" fill="#0b0f13"/>
+  <rect x="96" y="112" width="320" height="288" rx="48" fill="#121922" stroke="#2a3440" stroke-width="10"/>
+  <path d="M144 196h224M144 256h160M144 316h104" stroke="#e7c46a" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="360" cy="320" r="34" fill="#66d6a0"/>
+</svg>

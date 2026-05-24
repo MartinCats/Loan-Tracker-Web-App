@@ -28,6 +28,8 @@ export type PaymentHistoryType =
   | "partial_payment"
   | "overpayment"
   | "reschedule"
+  | "rescheduled"
+  | "loan_created"
   | "loan_closed";
 
 export type PaymentHistory = {

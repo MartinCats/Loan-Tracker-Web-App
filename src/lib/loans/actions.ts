@@ -370,16 +370,6 @@ export async function deleteLoanWithState(
     return { status: "error", message: "Loan not found." };
   }
 
-  const { error: historyError } = await auth.supabase
-    .from("payment_histories")
-    .delete()
-    .eq("loan_id", loanId)
-    .eq("user_id", auth.user.id);
-
-  if (historyError) {
-    return { status: "error", message: historyError.message };
-  }
-
   const { error: deleteError } = await auth.supabase
     .from("loans")
     .delete()

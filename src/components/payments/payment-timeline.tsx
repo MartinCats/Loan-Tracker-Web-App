@@ -6,20 +6,54 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-const labels: Record<PaymentHistory["type"], string> = {
-  payment_received: "Payment received",
-  partial_payment: "Partial payment",
-  overpayment: "Overpayment",
-  reschedule: "Reschedule",
-  loan_closed: "Loan closed",
+type ActivityEventType = PaymentHistory["type"];
+
+type ActivityEvent = Omit<PaymentHistory, "type"> & {
+  type: ActivityEventType;
 };
 
-const fallbackDescriptions: Record<PaymentHistory["type"], string> = {
-  payment_received: "Full interest received",
-  partial_payment: "Partial interest received",
-  overpayment: "Extra held as credit",
-  reschedule: "Due date changed",
-  loan_closed: "Loan moved to archive",
+type EventPresentation = {
+  accent: string;
+  description: string;
+  label: string;
+};
+
+const eventPresentation: Record<ActivityEventType, EventPresentation> = {
+  payment_received: {
+    accent: "gold",
+    description: "Full interest received",
+    label: "Payment received",
+  },
+  partial_payment: {
+    accent: "amber",
+    description: "Partial interest received",
+    label: "Partial payment",
+  },
+  overpayment: {
+    accent: "teal",
+    description: "Extra held as credit",
+    label: "Overpayment",
+  },
+  reschedule: {
+    accent: "blue",
+    description: "Due date changed",
+    label: "Rescheduled",
+  },
+  rescheduled: {
+    accent: "blue",
+    description: "Due date changed",
+    label: "Rescheduled",
+  },
+  loan_closed: {
+    accent: "rose",
+    description: "Loan moved to archive",
+    label: "Loan closed",
+  },
+  loan_created: {
+    accent: "gold",
+    description: "Loan created",
+    label: "Loan created",
+  },
 };
 
 type PaymentTimelineProps = {
@@ -27,6 +61,9 @@ type PaymentTimelineProps = {
 };
 
 export function PaymentTimeline({ payments }: PaymentTimelineProps) {
+  const events = payments.map((payment) => payment as ActivityEvent);
+  const groups = groupEventsByMonth(events);
+
   if (payments.length === 0) {
     return (
       <div className="empty-state">
@@ -38,23 +75,67 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
 
   return (
     <div className="timeline">
-      {payments.map((payment) => (
-        <article className="timeline-item" key={payment.id}>
-          <div>
-            <h3>{labels[payment.type]}</h3>
-            <p>{payment.note || fallbackDescriptions[payment.type]}</p>
-            <time dateTime={payment.createdAt}>
-              {formatPaymentDate(payment.createdAt)}
-            </time>
+      {groups.map((group) => (
+        <section className="timeline-group" key={group.label}>
+          <h3>{group.label}</h3>
+          <div className="timeline-group__items">
+            {group.events.map((event) => (
+              <TimelineEventItem event={event} key={event.id} />
+            ))}
           </div>
-          <strong>{money.format(payment.amount)}</strong>
-        </article>
+        </section>
       ))}
     </div>
   );
 }
 
-function formatPaymentDate(value: string) {
+function TimelineEventItem({ event }: { event: ActivityEvent }) {
+  const presentation = eventPresentation[event.type];
+
+  return (
+    <article className={`timeline-item timeline-item--${presentation.accent}`}>
+      <div>
+        <h4>{presentation.label}</h4>
+        <p>{event.note || presentation.description}</p>
+        <time dateTime={event.createdAt}>
+          {formatActivityTimestamp(event.createdAt)}
+        </time>
+      </div>
+      <strong>{money.format(event.amount)}</strong>
+    </article>
+  );
+}
+
+function groupEventsByMonth(events: ActivityEvent[]) {
+  const groups = new Map<string, ActivityEvent[]>();
+
+  for (const event of [...events].sort(
+    (a, b) => getTime(b.createdAt) - getTime(a.createdAt),
+  )) {
+    const label = formatMonthGroup(event.createdAt);
+    groups.set(label, [...(groups.get(label) ?? []), event]);
+  }
+
+  return [...groups.entries()].map(([label, groupEvents]) => ({
+    events: groupEvents,
+    label,
+  }));
+}
+
+function formatMonthGroup(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Undated";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatActivityTimestamp(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -68,23 +149,29 @@ function formatPaymentDate(value: string) {
     (today.getTime() - targetDay.getTime()) / 86_400_000,
   );
   const time = new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
   }).format(date);
 
   if (dayDifference === 0) {
-    return `Today, ${time}`;
+    return `Today • ${time}`;
   }
 
   if (dayDifference === 1) {
-    return `Yesterday, ${time}`;
+    return `Yesterday • ${time}`;
   }
 
   return `${new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(date)} · ${time}`;
+  }).format(date)} • ${time}`;
+}
+
+function getTime(value: string) {
+  const time = new Date(value).getTime();
+
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function startOfLocalDay(date: Date) {

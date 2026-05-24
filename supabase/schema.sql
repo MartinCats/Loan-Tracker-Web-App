@@ -98,10 +98,31 @@ create table if not exists public.payment_histories (
       'partial_payment',
       'overpayment',
       'reschedule',
+      'rescheduled',
+      'loan_created',
       'loan_closed'
     )
   ),
   constraint payment_histories_amount_check check (amount >= 0)
+);
+
+alter table public.payment_histories
+add column if not exists note text;
+
+alter table public.payment_histories
+drop constraint if exists payment_histories_type_check;
+
+alter table public.payment_histories
+add constraint payment_histories_type_check check (
+  type in (
+    'payment_received',
+    'partial_payment',
+    'overpayment',
+    'reschedule',
+    'rescheduled',
+    'loan_created',
+    'loan_closed'
+  )
 );
 
 alter table public.payment_histories enable row level security;
@@ -118,15 +139,39 @@ create policy "Users can insert own payment histories"
 on public.payment_histories
 for insert
 to authenticated
-with check (user_id = auth.uid());
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.loans as owner_loan
+    where owner_loan.id = payment_histories.loan_id
+      and owner_loan.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can update own payment histories" on public.payment_histories;
 create policy "Users can update own payment histories"
 on public.payment_histories
 for update
 to authenticated
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
+using (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.loans as owner_loan
+    where owner_loan.id = payment_histories.loan_id
+      and owner_loan.user_id = auth.uid()
+  )
+)
+with check (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.loans as owner_loan
+    where owner_loan.id = payment_histories.loan_id
+      and owner_loan.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can delete own payment histories" on public.payment_histories;
 create policy "Users can delete own payment histories"

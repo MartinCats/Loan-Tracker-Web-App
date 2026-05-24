@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { previewLoans, previewPayments } from "@/lib/preview-data";
+import { formatMoney } from "@/lib/format/money";
 import {
   calculateCloseLoanSettlement,
   calculatePayment,
@@ -261,14 +262,14 @@ function formatSettlementHistoryNote(
   note: string,
 ) {
   const lines = [
-    `Total settlement received: ${formatMoneyForHistory(settlement.amountReceived)}`,
-    `Principal returned: ${formatMoneyForHistory(settlement.principalReturn)}`,
-    `Final interest received: ${formatMoneyForHistory(settlement.finalInterestReceived)}`,
-    `Credit applied: ${formatMoneyForHistory(settlement.creditApplied)}`,
+    `Total settlement received: ${formatMoney(settlement.amountReceived)}`,
+    `Principal returned: ${formatMoney(settlement.principalReturn)}`,
+    `Final interest received: ${formatMoney(settlement.finalInterestReceived)}`,
+    `Credit applied: ${formatMoney(settlement.creditApplied)}`,
   ];
 
   if (settlement.overpayment > 0) {
-    lines.push(`Extra received: ${formatMoneyForHistory(settlement.overpayment)}`);
+    lines.push(`Extra received: ${formatMoney(settlement.overpayment)}`);
   }
 
   if (note) {
@@ -276,14 +277,6 @@ function formatSettlementHistoryNote(
   }
 
   return lines.join("\n");
-}
-
-function formatMoneyForHistory(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    currency: "USD",
-    maximumFractionDigits: 2,
-    style: "currency",
-  }).format(amount);
 }
 
 function formatDateForHistory(dateKey: string) {

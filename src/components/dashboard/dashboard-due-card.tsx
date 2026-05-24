@@ -6,13 +6,9 @@ import { useLoanCardNavigation } from "@/components/loans/use-loan-card-navigati
 import { formatDueLabel } from "@/lib/loans/urgency";
 import { calculateCreditApplied, calculateTotalDue } from "@/lib/payments/calculator";
 import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/format/money";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { Loan } from "@/lib/types/loan";
-
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 export function DashboardDueCard({
   loan,
@@ -21,6 +17,7 @@ export function DashboardDueCard({
   loan: Loan;
   todayDate: string;
 }) {
+  const { t } = useI18n();
   const detailHref = `/loans/${loan.id}`;
   const { isOpening, isPressed, linkProps } = useLoanCardNavigation(detailHref);
   const currentDue = calculateTotalDue(loan);
@@ -43,9 +40,9 @@ export function DashboardDueCard({
         <div className="dashboard-due-card__main">
           <h3>{loan.borrowerName}</h3>
           <p>{formatDueLabel(loan.currentDueDate, todayDate)}</p>
-          <strong>{money.format(currentDue)} due</strong>
+          <strong>{formatMoney(currentDue)} {t("loanCard.currentDue")}</strong>
           {currentDue === 0 && creditApplied > 0 ? (
-            <small>Credit covers this cycle</small>
+            <small>{t("loanCard.creditCovers")}</small>
           ) : null}
         </div>
 

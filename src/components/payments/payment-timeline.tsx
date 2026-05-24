@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatMoney } from "@/lib/format/money";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { PaymentHistory } from "@/lib/types/loan";
-
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
 
 type ActivityEventType = PaymentHistory["type"];
 
@@ -17,45 +14,45 @@ type ActivityEvent = Omit<PaymentHistory, "type"> & {
 
 type EventPresentation = {
   accent: string;
-  description: string;
-  label: string;
+  descriptionKey: MessageKey;
+  labelKey: MessageKey;
 };
 
 const eventPresentation: Record<ActivityEventType, EventPresentation> = {
   payment_received: {
     accent: "gold",
-    description: "Full interest received",
-    label: "Payment received",
+    descriptionKey: "timeline.paymentReceivedDescription",
+    labelKey: "timeline.paymentReceived",
   },
   partial_payment: {
     accent: "amber",
-    description: "Partial interest received",
-    label: "Partial payment",
+    descriptionKey: "timeline.partialPaymentDescription",
+    labelKey: "timeline.partialPayment",
   },
   overpayment: {
     accent: "teal",
-    description: "Extra held as credit",
-    label: "Overpayment",
+    descriptionKey: "timeline.overpaymentDescription",
+    labelKey: "timeline.overpayment",
   },
   reschedule: {
     accent: "blue",
-    description: "Due date changed",
-    label: "Rescheduled",
+    descriptionKey: "timeline.rescheduledDescription",
+    labelKey: "timeline.rescheduled",
   },
   rescheduled: {
     accent: "blue",
-    description: "Due date changed",
-    label: "Rescheduled",
+    descriptionKey: "timeline.rescheduledDescription",
+    labelKey: "timeline.rescheduled",
   },
   loan_closed: {
     accent: "rose",
-    description: "Loan moved to archive",
-    label: "Loan closed",
+    descriptionKey: "timeline.loanClosedDescription",
+    labelKey: "timeline.loanClosed",
   },
   loan_created: {
     accent: "gold",
-    description: "Loan created",
-    label: "Loan created",
+    descriptionKey: "timeline.loanCreatedDescription",
+    labelKey: "timeline.loanCreated",
   },
 };
 
@@ -64,9 +61,10 @@ type PaymentTimelineProps = {
 };
 
 export function PaymentTimeline({ payments }: PaymentTimelineProps) {
+  const { t } = useI18n();
   const [hasMounted, setHasMounted] = useState(false);
   const events = payments.map((payment) => payment as ActivityEvent);
-  const groups = groupEventsByMonth(events, hasMounted);
+  const groups = groupEventsByMonth(events, hasMounted, t);
 
   useEffect(() => {
     setHasMounted(true);
@@ -75,8 +73,8 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
   if (payments.length === 0) {
     return (
       <div className="empty-state">
-        <h3>No payment history</h3>
-        <p>Received payments will appear here as a simple timeline.</p>
+        <h3>{t("timeline.noHistory")}</h3>
+        <p>{t("timeline.noHistoryDescription")}</p>
       </div>
     );
   }
@@ -91,6 +89,7 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
               <TimelineEventItem
                 event={event}
                 key={event.id}
+                t={t}
                 useRelativeTime={hasMounted}
               />
             ))}
@@ -103,9 +102,11 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
 
 function TimelineEventItem({
   event,
+  t,
   useRelativeTime,
 }: {
   event: ActivityEvent;
+  t: ReturnType<typeof useI18n>["t"];
   useRelativeTime: boolean;
 }) {
   const presentation = eventPresentation[event.type];
@@ -113,24 +114,28 @@ function TimelineEventItem({
   return (
     <article className={`timeline-item timeline-item--${presentation.accent}`}>
       <div>
-        <h4>{presentation.label}</h4>
-        <p>{event.note || presentation.description}</p>
+        <h4>{t(presentation.labelKey)}</h4>
+        <p>{event.note || t(presentation.descriptionKey)}</p>
         <time dateTime={event.createdAt}>
-          {formatActivityTimestamp(event.createdAt, useRelativeTime)}
+          {formatActivityTimestamp(event.createdAt, useRelativeTime, t)}
         </time>
       </div>
-      <strong>{money.format(event.amount)}</strong>
+      <strong>{formatMoney(event.amount)}</strong>
     </article>
   );
 }
 
-function groupEventsByMonth(events: ActivityEvent[], useLocalTime: boolean) {
+function groupEventsByMonth(
+  events: ActivityEvent[],
+  useLocalTime: boolean,
+  t: ReturnType<typeof useI18n>["t"],
+) {
   const groups = new Map<string, ActivityEvent[]>();
 
   for (const event of [...events].sort(
     (a, b) => getTime(b.createdAt) - getTime(a.createdAt),
   )) {
-    const label = formatMonthGroup(event.createdAt, useLocalTime);
+    const label = formatMonthGroup(event.createdAt, useLocalTime, t);
     groups.set(label, [...(groups.get(label) ?? []), event]);
   }
 
@@ -140,11 +145,15 @@ function groupEventsByMonth(events: ActivityEvent[], useLocalTime: boolean) {
   }));
 }
 
-function formatMonthGroup(value: string, useLocalTime: boolean) {
+function formatMonthGroup(
+  value: string,
+  useLocalTime: boolean,
+  t: ReturnType<typeof useI18n>["t"],
+) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Undated";
+    return t("timeline.undated");
   }
 
   return new Intl.DateTimeFormat("en-US", {
@@ -154,7 +163,11 @@ function formatMonthGroup(value: string, useLocalTime: boolean) {
   }).format(date);
 }
 
-function formatActivityTimestamp(value: string, useRelativeTime: boolean) {
+function formatActivityTimestamp(
+  value: string,
+  useRelativeTime: boolean,
+  t: ReturnType<typeof useI18n>["t"],
+) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -176,11 +189,11 @@ function formatActivityTimestamp(value: string, useRelativeTime: boolean) {
     );
 
     if (dayDifference === 0) {
-      return `Today \u2022 ${time}`;
+      return `${t("timeline.today")} \u2022 ${time}`;
     }
 
     if (dayDifference === 1) {
-      return `Yesterday \u2022 ${time}`;
+      return `${t("timeline.yesterday")} \u2022 ${time}`;
     }
   }
 

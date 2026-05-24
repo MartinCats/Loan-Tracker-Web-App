@@ -3,6 +3,7 @@
 import { LoanBrowser } from "@/components/loans/loan-browser";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { PageHeader } from "@/components/ui/page-header";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { Loan } from "@/lib/types/loan";
 
 type LoansPageContentProps = {
@@ -16,6 +17,7 @@ export function LoansPageContent({
   initialLoans,
   todayDate,
 }: LoansPageContentProps) {
+  const { t } = useI18n();
   const previewStore = usePreviewStore();
   const loans = previewStore
     ? previewStore.loans.filter((loan) => loan.status === "active")
@@ -24,19 +26,19 @@ export function LoansPageContent({
   return (
     <main className="page-stack">
       <PageHeader
-        eyebrow="Active book"
-        title="Loans"
+        eyebrow={t("loans.eyebrow")}
+        title={t("loans.title")}
         description={
           previewStore
-            ? "Preview data resets on refresh."
-            : "Create and manage active loans stored in Supabase."
+            ? t("dashboard.previewDescription")
+            : t("loans.liveDescription")
         }
       />
 
       <section className="panel">
         {error && !previewStore ? (
           <div className="empty-state empty-state--error">
-            <h3>Could not load loans</h3>
+            <h3>{t("loans.couldNotLoad")}</h3>
             <p>{error}</p>
           </div>
         ) : (

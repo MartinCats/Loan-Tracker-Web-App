@@ -5,6 +5,7 @@ import { type FormEvent, useActionState, useEffect, useRef, useState } from "rea
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import { rescheduleLoanAction, type LoanActionState } from "@/lib/loans/actions";
 
 const initialState: LoanActionState = {
@@ -27,6 +28,7 @@ export function RescheduleLoanSheet({
   onRescheduled,
   triggerVariant = "button",
 }: RescheduleLoanSheetProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
@@ -40,7 +42,7 @@ export function RescheduleLoanSheet({
   useEffect(() => {
     if (state.status === "success") {
       setIsOpen(false);
-      showFeedback("Due date updated");
+      showFeedback(t("feedback.dueDateUpdated"));
       onRescheduled?.({ nextDueDate: submittedDueDateRef.current });
       router.refresh();
     } else if (state.status === "error" && state.message) {
@@ -72,7 +74,7 @@ export function RescheduleLoanSheet({
     window.setTimeout(() => {
       previewStore.rescheduleLoan(loanId, nextDueDate);
       setPreviewMessage("Preview mode: reschedule simulated.");
-      showFeedback("Due date updated");
+      showFeedback(t("feedback.dueDateUpdated"));
       onRescheduled?.({ nextDueDate });
       setIsOpen(false);
       setIsPreviewPending(false);
@@ -99,11 +101,11 @@ export function RescheduleLoanSheet({
           {triggerVariant === "card" ? (
             <>
               <span aria-hidden="true" className="quick-action-card__icon">10</span>
-              <strong>Reschedule</strong>
-              <small>Move due date</small>
+              <strong>{t("reschedule.title")}</strong>
+              <small>{t("reschedule.moveDueDate")}</small>
             </>
           ) : (
-            "Reschedule"
+            t("reschedule.title")
           )}
         </button>
         {!isOpen && previewMessage ? (
@@ -119,18 +121,18 @@ export function RescheduleLoanSheet({
       {isOpen ? (
         <div className="sheet-backdrop" role="presentation">
           <section
-            aria-label="Reschedule loan"
+            aria-label={t("reschedule.title")}
             aria-modal="true"
             className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
               <div>
-                <h2>Reschedule</h2>
-                <p>Choose the next due date for this active loan.</p>
+                <h2>{t("reschedule.title")}</h2>
+                <p>{t("reschedule.description")}</p>
               </div>
               <button
-                aria-label="Close reschedule sheet"
+                aria-label={t("reschedule.close")}
                 className="icon-button"
                 onClick={() => setIsOpen(false)}
                 type="button"
@@ -147,19 +149,19 @@ export function RescheduleLoanSheet({
               <input name="loanId" type="hidden" value={loanId} />
 
               <label className="field">
-                <span>Current due date</span>
+                <span>{t("reschedule.currentDueDate")}</span>
                 <input readOnly type="text" value={formatDate(currentDueDate)} />
               </label>
 
               <div className="field">
-                <span>New due date</span>
+                <span>{t("reschedule.newDueDate")}</span>
                 <div className="date-field">
                   <span className="date-field__display">
-                    {nextDueDate ? formatDate(nextDueDate) : "Choose date"}
+                    {nextDueDate ? formatDate(nextDueDate) : t("create.chooseDate")}
                   </span>
-                  <span className="date-field__hint">Change</span>
+                  <span className="date-field__hint">{t("common.change")}</span>
                   <input
-                    aria-label="New due date"
+                    aria-label={t("reschedule.newDueDate")}
                     className="date-field__native"
                     name="currentDueDate"
                     onChange={(event) => setNextDueDate(event.target.value)}
@@ -186,16 +188,16 @@ export function RescheduleLoanSheet({
               <div className="sheet-actions">
                 <AuthSubmitButton
                   forcePending={isPreviewPending}
-                  pendingLabel="Saving..."
+                  pendingLabel={t("reschedule.saving")}
                 >
-                  Save new due date
+                  {t("reschedule.save")}
                 </AuthSubmitButton>
                 <button
                   className="form-button form-button--secondary"
                   onClick={() => setIsOpen(false)}
                   type="button"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>

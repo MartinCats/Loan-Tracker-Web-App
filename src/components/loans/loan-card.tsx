@@ -4,19 +4,15 @@ import Link from "next/link";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
 import { useLoanCardNavigation } from "@/components/loans/use-loan-card-navigation";
-import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
 import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/format/money";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { Loan } from "@/lib/types/loan";
 import {
   calculateCreditApplied,
   calculateTotalDue,
 } from "@/lib/payments/calculator";
-
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 type LoanCardProps = {
   loan: Loan;
@@ -25,11 +21,12 @@ type LoanCardProps = {
 };
 
 export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
+  const { t } = useI18n();
   const currentDue = calculateTotalDue(loan);
   const creditApplied = calculateCreditApplied(loan);
   const detailHref = mode === "archive" ? `/archive/${loan.id}` : `/loans/${loan.id}`;
   const { isOpening, isPressed, linkProps } = useLoanCardNavigation(detailHref);
-  const amountLabel = mode === "archive" ? "Profit" : "Current due";
+  const amountLabel = mode === "archive" ? t("loanCard.profit") : t("loanCard.currentDue");
   const amount = mode === "archive" ? loan.accumulatedProfit : currentDue;
 
   return (
@@ -52,7 +49,7 @@ export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
         </div>
 
         <p className="loan-row__terms">
-          {formatPaymentCycle(loan.paymentCycle)} cycle -{" "}
+          {t(`cycle.${loan.paymentCycle}` as MessageKey)} -{" "}
           <DueDateLabel dueDate={loan.currentDueDate} todayDate={todayDate} />
           {mode === "active" ? (
             <span> - Due {formatDueDate(loan.currentDueDate)}</span>
@@ -63,10 +60,10 @@ export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
           <span>
             {amountLabel}
             {mode === "active" && currentDue === 0 && creditApplied > 0 ? (
-              <small>Credit covers this cycle</small>
+              <small>{t("loanCard.creditCovers")}</small>
             ) : null}
           </span>
-          <strong>{money.format(amount)}</strong>
+          <strong>{formatMoney(amount)}</strong>
         </div>
       </Link>
     </article>

@@ -5,6 +5,8 @@ import { type FormEvent, useActionState, useEffect, useState } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
+import { formatMoney } from "@/lib/format/money";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import { receivePaymentAction } from "@/lib/payments/actions";
 import type { PaymentActionState } from "@/lib/payments/types";
 
@@ -36,6 +38,7 @@ export function ReceivePaymentSheet({
   onPaymentRecorded,
   triggerVariant = "button",
 }: ReceivePaymentSheetProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
@@ -51,8 +54,8 @@ export function ReceivePaymentSheet({
       setAmount("");
       showFeedback(
         state.nextDueDate
-          ? "Payment recorded. Due date advanced."
-          : "Payment recorded",
+          ? t("feedback.paymentRecordedAdvanced")
+          : t("feedback.paymentRecorded"),
       );
       onPaymentRecorded?.({ nextDueDate: state.nextDueDate });
       router.refresh();
@@ -99,8 +102,8 @@ export function ReceivePaymentSheet({
       setPreviewMessage("Preview mode: payment simulated.");
       showFeedback(
         result?.nextDueDate
-          ? "Payment recorded. Due date advanced."
-          : "Payment recorded",
+          ? t("feedback.paymentRecordedAdvanced")
+          : t("feedback.paymentRecorded"),
       );
       onPaymentRecorded?.({ nextDueDate: result?.nextDueDate });
       setAmount("");
@@ -120,8 +123,8 @@ export function ReceivePaymentSheet({
             type="button"
           >
             <span aria-hidden="true" className="quick-action-card__icon">$</span>
-            <strong>{label}</strong>
-            <small>Record interest</small>
+            <strong>{label === "Receive payment" ? t("receive.title") : label}</strong>
+            <small>{t("receive.recordInterest")}</small>
           </button>
         ) : (
           <button
@@ -131,7 +134,7 @@ export function ReceivePaymentSheet({
             type="button"
           >
             <span aria-hidden="true">+</span>
-            {label}
+            {label === "Receive payment" ? t("receive.title") : label}
           </button>
         )}
         {!isOpen && previewMessage ? (
@@ -144,18 +147,18 @@ export function ReceivePaymentSheet({
       {isOpen ? (
         <div className="sheet-backdrop" role="presentation">
           <section
-            aria-label="Receive payment"
+            aria-label={t("receive.title")}
             aria-modal="true"
             className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
               <div>
-                <h2>Receive payment</h2>
-                <p>Amount to pay now: {formatMoney(totalDue)}</p>
+                <h2>{t("receive.title")}</h2>
+                <p>{t("receive.amountToPay")}: {formatMoney(totalDue)}</p>
               </div>
               <button
-                aria-label="Close receive payment sheet"
+                aria-label={t("receive.close")}
                 className="icon-button"
                 onClick={() => setIsOpen(false)}
                 type="button"
@@ -171,23 +174,23 @@ export function ReceivePaymentSheet({
             >
               <input name="loanId" type="hidden" value={loanId} />
 
-              <div className="payment-due-summary" aria-label="Payment due summary">
+              <div className="payment-due-summary" aria-label={t("receive.summary")}>
                 <div>
-                  <span>Gross due</span>
+                  <span>{t("receive.grossDue")}</span>
                   <strong>{formatMoney(grossDue)}</strong>
                 </div>
                 <div>
-                  <span>Credit applied</span>
+                  <span>{t("detail.creditApplied")}</span>
                   <strong>{formatMoney(creditApplied)}</strong>
                 </div>
                 <div>
-                  <span>Pay now</span>
+                  <span>{t("receive.payNow")}</span>
                   <strong>{formatMoney(totalDue)}</strong>
                 </div>
               </div>
 
               <label className="field">
-                <span>Payment amount</span>
+                <span>{t("receive.paymentAmount")}</span>
                 <input
                   aria-describedby="payment-amount-hint"
                   inputMode="decimal"
@@ -201,7 +204,7 @@ export function ReceivePaymentSheet({
                   value={amount}
                 />
                 <small id="payment-amount-hint">
-                  Credit is applied first. Extra payment becomes credit.
+                  {t("receive.hint")}
                 </small>
               </label>
 
@@ -211,7 +214,7 @@ export function ReceivePaymentSheet({
                   onClick={() => setAmount(String(totalDue))}
                   type="button"
                 >
-                  Full payment
+                  {t("receive.fullPayment")}
                 </button>
                 {totalDue === 0 && creditApplied > 0 ? (
                   <button
@@ -219,7 +222,7 @@ export function ReceivePaymentSheet({
                     onClick={() => setAmount("0")}
                     type="button"
                   >
-                    Apply credit
+                    {t("receive.applyCredit")}
                   </button>
                 ) : (
                   <button
@@ -228,20 +231,20 @@ export function ReceivePaymentSheet({
                     onClick={() => setAmount(String(Math.max(unpaidInterest - creditApplied, 0)))}
                     type="button"
                   >
-                    Clear unpaid
+                    {t("receive.clearUnpaid")}
                   </button>
                 )}
               </div>
 
               <label className="field">
-                <span>Note</span>
+                <span>{t("receive.note")}</span>
                 <input
                   autoComplete="off"
                   name="note"
-                  placeholder="Optional"
+                  placeholder={t("common.optional")}
                   type="text"
                 />
-                <small>Optional context for the payment history.</small>
+                <small>{t("receive.noteHint")}</small>
               </label>
 
               {state.status === "error" && state.message ? (
@@ -256,9 +259,9 @@ export function ReceivePaymentSheet({
               <div className="sheet-actions">
                 <AuthSubmitButton
                   forcePending={isPreviewPending}
-                  pendingLabel="Recording..."
+                  pendingLabel={t("receive.recording")}
                 >
-                  Record payment
+                  {t("receive.recordPayment")}
                 </AuthSubmitButton>
               </div>
             </form>
@@ -267,12 +270,4 @@ export function ReceivePaymentSheet({
       ) : null}
     </>
   );
-}
-
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(amount);
 }

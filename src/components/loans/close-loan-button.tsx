@@ -6,6 +6,8 @@ import { useFormStatus } from "react-dom";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
 import { closeLoanWithState, type LoanActionState } from "@/lib/loans/actions";
+import { formatMoney } from "@/lib/format/money";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import { calculateCloseLoanSettlement } from "@/lib/payments/calculator";
 import type { Loan } from "@/lib/types/loan";
 
@@ -21,6 +23,7 @@ export function CloseLoanButton({
   loan: Loan;
   triggerVariant?: "button" | "card";
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
@@ -35,7 +38,7 @@ export function CloseLoanButton({
   useEffect(() => {
     if (state.status === "success") {
       setIsOpen(false);
-      showFeedback("Loan moved to Archive");
+      showFeedback(t("feedback.loanMoved"));
       router.replace(`/archive/${loan.id}`);
     } else if (state.status === "error" && state.message) {
       showFeedback(state.message, "error");
@@ -78,7 +81,7 @@ export function CloseLoanButton({
 
       setPreviewStatus("success");
       setPreviewMessage("Preview mode: loan closed.");
-      showFeedback("Loan moved to Archive");
+      showFeedback(t("feedback.loanMoved"));
       setIsOpen(false);
       setIsPreviewPending(false);
       router.replace(`/archive/${loan.id}`);
@@ -104,11 +107,11 @@ export function CloseLoanButton({
           {triggerVariant === "card" ? (
             <>
               <span aria-hidden="true" className="quick-action-card__icon">X</span>
-              <strong>Close loan</strong>
-              <small>Final payoff</small>
+              <strong>{t("close.title")}</strong>
+              <small>{t("close.finalPayoff")}</small>
             </>
           ) : (
-            "Close loan"
+            t("close.title")
           )}
         </button>
         {!isOpen && (previewMessage || state.message) ? (
@@ -128,18 +131,18 @@ export function CloseLoanButton({
       {isOpen ? (
         <div className="sheet-backdrop" role="presentation">
           <section
-            aria-label="Close loan settlement"
+            aria-label={t("close.title")}
             aria-modal="true"
             className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
               <div>
-                <h2>Close loan</h2>
-                <p>Record the final payoff, then move this loan to Archive.</p>
+                <h2>{t("close.title")}</h2>
+                <p>{t("close.description")}</p>
               </div>
               <button
-                aria-label="Close settlement sheet"
+                aria-label={t("close.closeSheet")}
                 className="icon-button"
                 onClick={() => setIsOpen(false)}
                 type="button"
@@ -157,25 +160,25 @@ export function CloseLoanButton({
 
               <div className="settlement-summary" aria-label="Settlement summary">
                 <div>
-                  <span>Principal return</span>
+                  <span>{t("close.principalReturn")}</span>
                   <strong>{formatMoney(settlement.principalReturn)}</strong>
                 </div>
                 <div>
-                  <span>Final due</span>
+                  <span>{t("close.finalDue")}</span>
                   <strong>{formatMoney(settlement.grossDue)}</strong>
                 </div>
                 <div>
-                  <span>Credit applied</span>
+                  <span>{t("detail.creditApplied")}</span>
                   <strong>-{formatMoney(settlement.creditApplied)}</strong>
                 </div>
                 <div className="settlement-summary__total">
-                  <span>Total to collect</span>
+                  <span>{t("close.totalToCollect")}</span>
                   <strong>{formatMoney(settlement.totalPayoff)}</strong>
                 </div>
               </div>
 
               <label className="field">
-                <span>Amount received</span>
+                <span>{t("close.amountReceived")}</span>
                 <input
                   inputMode="decimal"
                   min="0"
@@ -187,20 +190,19 @@ export function CloseLoanButton({
                   value={amountReceived}
                 />
                 <small>
-                  Principal is not counted as profit. Credit is applied to final
-                  interest first.
+                  {t("close.hint")}
                 </small>
               </label>
 
               <label className="field">
-                <span>Note</span>
+                <span>{t("receive.note")}</span>
                 <input
                   autoComplete="off"
                   name="note"
-                  placeholder="Optional"
+                  placeholder={t("common.optional")}
                   type="text"
                 />
-                <small>Optional closure context for the activity feed.</small>
+                <small>{t("close.noteHint")}</small>
               </label>
 
               {previewMessage || state.message ? (
@@ -222,7 +224,7 @@ export function CloseLoanButton({
                   onClick={() => setIsOpen(false)}
                   type="button"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <CloseSubmitButton forcePending={isPreviewPending} />
               </div>
@@ -234,15 +236,8 @@ export function CloseLoanButton({
   );
 }
 
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
 function CloseSubmitButton({ forcePending = false }: { forcePending?: boolean }) {
+  const { t } = useI18n();
   const { pending } = useFormStatus();
   const isPending = pending || forcePending;
 
@@ -253,7 +248,7 @@ function CloseSubmitButton({ forcePending = false }: { forcePending?: boolean })
       disabled={isPending}
       type="submit"
     >
-      {isPending ? "Closing..." : "Close loan"}
+      {isPending ? t("close.closing") : t("close.title")}
     </button>
   );
 }

@@ -10,7 +10,9 @@ import { ReceivePaymentSheet } from "@/components/payments/receive-payment-sheet
 import { PaymentTimeline } from "@/components/payments/payment-timeline";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
+import { formatMoney } from "@/lib/format/money";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import { formatDueLabel } from "@/lib/loans/urgency";
 import {
   calculateCreditApplied,
@@ -19,12 +21,6 @@ import {
   calculateTotalDue,
 } from "@/lib/payments/calculator";
 import type { Loan, PaymentHistory } from "@/lib/types/loan";
-
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
 
 type LoanDetailContentProps = {
   error?: string;
@@ -41,6 +37,7 @@ export function LoanDetailContent({
   payments,
   todayDate,
 }: LoanDetailContentProps) {
+  const { t } = useI18n();
   const previewStore = usePreviewStore();
   const [isCycleUpdated, setIsCycleUpdated] = useState(false);
   const dueStatusRef = useRef<HTMLElement | null>(null);
@@ -58,10 +55,10 @@ export function LoanDetailContent({
     return (
       <main className="page-stack">
         <section className="panel empty-state empty-state--error">
-          <h2>Could not load loan</h2>
+          <h2>{t("detail.couldNotLoadLoan")}</h2>
           <p>
             {displayError ??
-              "Preview loan data is no longer available after refresh."}
+            t("detail.previewMissing")}
           </p>
         </section>
       </main>
@@ -72,7 +69,7 @@ export function LoanDetailContent({
   const creditApplied = calculateCreditApplied(loan);
   const totalDue = calculateTotalDue(loan);
   const isClosed = loan.status === "closed";
-  const paymentCycle = formatPaymentCycle(loan.paymentCycle);
+  const paymentCycle = t(`cycle.${loan.paymentCycle}` as MessageKey);
   const dueLabel = formatDueLabel(loan.currentDueDate, todayDate);
   const closedDate = getClosedDate(loan, visiblePayments);
   const emphasizeDueStatus = useCallback((options: { shouldScroll?: boolean } = {}) => {
@@ -104,41 +101,41 @@ export function LoanDetailContent({
     return (
       <main className="page-stack loan-detail-stack">
         <PageHeader
-          eyebrow="Closed loan"
+          eyebrow={t("detail.closedLoan")}
           title={loan.borrowerName}
-          description={`${paymentCycle} cycle - Closed${
+          description={`${paymentCycle} - ${t("common.closed")}${
             closedDate ? ` ${closedDate}` : ""
           }`}
         />
 
         <section className="loan-detail-status">
           <LoanStatusPill loan={loan} todayDate={todayDate} />
-          <span>{closedDate ? `Closed ${closedDate}` : "Read-only history"}</span>
+          <span>{closedDate ? `${t("common.closed")} ${closedDate}` : t("detail.readOnlyHistory")}</span>
         </section>
 
-        <section className="panel loan-overview" aria-label="Loan overview">
+        <section className="panel loan-overview" aria-label={t("detail.loanOverview")}>
           <div className="section-heading">
             <div>
-              <h2>Loan overview</h2>
-              <p>Original loan terms.</p>
+              <h2>{t("detail.loanOverview")}</h2>
+              <p>{t("detail.originalTerms")}</p>
             </div>
           </div>
           <div className="overview-grid">
             <div className="overview-item overview-item--strong">
-              <span>Principal borrowed</span>
-              <strong>{money.format(loan.principal)}</strong>
+              <span>{t("detail.principalBorrowed")}</span>
+              <strong>{formatMoney(loan.principal)}</strong>
             </div>
             <div className="overview-item">
-              <span>Interest rate</span>
+              <span>{t("detail.interestRate")}</span>
               <strong>{loan.interestRate}%</strong>
             </div>
             <div className="overview-item">
-              <span>Payment cycle</span>
+              <span>{t("detail.paymentCycle")}</span>
               <strong className="cycle-pill cycle-pill--large">{paymentCycle}</strong>
             </div>
             <div className="overview-item">
-              <span>Status</span>
-              <strong className="cycle-pill cycle-pill--large">Closed</strong>
+              <span>{t("common.status")}</span>
+              <strong className="cycle-pill cycle-pill--large">{t("common.closed")}</strong>
             </div>
           </div>
         </section>
@@ -146,26 +143,26 @@ export function LoanDetailContent({
         <section className="panel balance-section" aria-label="Final summary">
           <div className="section-heading">
             <div>
-              <h2>Final summary</h2>
-              <p>Historical totals for this borrower.</p>
+              <h2>{t("detail.finalSummary")}</h2>
+              <p>{t("detail.finalSummaryDescription")}</p>
             </div>
           </div>
           <div className="balance-grid">
             <div className="balance-card balance-card--primary">
-              <span>Total Profit</span>
-              <strong>{money.format(loan.accumulatedProfit)}</strong>
+              <span>{t("detail.totalProfit")}</span>
+              <strong>{formatMoney(loan.accumulatedProfit)}</strong>
             </div>
             <div className="balance-card">
-              <span>Payment Records</span>
+              <span>{t("detail.paymentRecords")}</span>
               <strong>{visiblePayments.length}</strong>
             </div>
             <div className="balance-card">
-              <span>Credit Balance</span>
-              <strong>{money.format(loan.creditBalance)}</strong>
+              <span>{t("detail.creditBalance")}</span>
+              <strong>{formatMoney(loan.creditBalance)}</strong>
             </div>
             <div className="balance-card">
-              <span>Closed Date</span>
-              <strong>{closedDate ?? "Not recorded"}</strong>
+              <span>{t("detail.closedDate")}</span>
+              <strong>{closedDate ?? t("detail.notRecorded")}</strong>
             </div>
           </div>
         </section>
@@ -173,14 +170,14 @@ export function LoanDetailContent({
         <section className="panel">
           <div className="section-heading">
             <div>
-              <h2>Payment history</h2>
-              <p>Recorded payments preserved for review.</p>
+              <h2>{t("detail.paymentHistory")}</h2>
+              <p>{t("detail.paymentHistoryClosedDescription")}</p>
             </div>
-            <span className="status-pill">{visiblePayments.length} records</span>
+            <span className="status-pill">{visiblePayments.length} {t("common.records")}</span>
           </div>
           {displayError ? (
             <div className="empty-state empty-state--error">
-              <h3>Could not load history</h3>
+              <h3>{t("detail.couldNotLoadHistory")}</h3>
               <p>{displayError}</p>
             </div>
           ) : (
@@ -191,8 +188,8 @@ export function LoanDetailContent({
         <section className="panel danger-zone-panel">
           <div className="section-heading">
             <div>
-              <h2>Danger zone</h2>
-              <p>Permanent removal for unwanted or mistaken loans.</p>
+              <h2>{t("detail.dangerZone")}</h2>
+              <p>{t("detail.dangerDescription")}</p>
             </div>
           </div>
           <DeleteLoanButton afterDeleteHref="/archive" loanId={loan.id} />
@@ -204,9 +201,9 @@ export function LoanDetailContent({
   return (
     <main className="page-stack loan-detail-stack">
       <PageHeader
-        eyebrow={isClosed ? "Closed loan" : "Active loan"}
+        eyebrow={isClosed ? t("detail.closedLoan") : t("detail.activeLoan")}
         title={loan.borrowerName}
-        description={`${paymentCycle} cycle - ${isClosed ? "Closed" : "Due"} ${
+        description={`${paymentCycle} - ${isClosed ? t("common.closed") : t("loanCard.currentDue")} ${
           loan.currentDueDate
         }`}
       />
@@ -219,59 +216,59 @@ export function LoanDetailContent({
         <span>{dueLabel}</span>
       </section>
 
-      <section className="panel loan-overview" aria-label="Loan overview">
+      <section className="panel loan-overview" aria-label={t("detail.loanOverview")}>
         <div className="section-heading">
           <div>
-            <h2>Loan overview</h2>
-            <p>Core loan terms.</p>
+            <h2>{t("detail.loanOverview")}</h2>
+            <p>{t("detail.coreTerms")}</p>
           </div>
         </div>
         <div className="overview-grid">
           <div className="overview-item overview-item--strong">
-            <span>Principal borrowed</span>
-            <strong>{money.format(loan.principal)}</strong>
+            <span>{t("detail.principalBorrowed")}</span>
+            <strong>{formatMoney(loan.principal)}</strong>
           </div>
           <div className="overview-item">
-            <span>Interest rate</span>
+            <span>{t("detail.interestRate")}</span>
             <strong>{loan.interestRate}%</strong>
           </div>
           <div className="overview-item">
-            <span>Payment cycle</span>
+            <span>{t("detail.paymentCycle")}</span>
             <strong className="cycle-pill cycle-pill--large">{paymentCycle}</strong>
           </div>
         </div>
       </section>
 
-      <section className="panel balance-section" aria-label="Current balances">
+      <section className="panel balance-section" aria-label={t("detail.currentBalances")}>
         <div className="section-heading">
           <div>
-            <h2>Current balances</h2>
-            <p>Due amounts and received profit.</p>
+            <h2>{t("detail.currentBalances")}</h2>
+            <p>{t("detail.balancesDescription")}</p>
           </div>
         </div>
         <div className="balance-grid">
           <div className="balance-card balance-card--primary">
-            <span>Current Due</span>
-            <strong>{money.format(totalDue)}</strong>
+            <span>{t("detail.currentDue")}</span>
+            <strong>{formatMoney(totalDue)}</strong>
             {creditApplied > 0 ? (
-              <small>Credit applied: {money.format(creditApplied)}</small>
+              <small>{t("detail.creditApplied")}: {formatMoney(creditApplied)}</small>
             ) : null}
           </div>
           <div className="balance-card">
-            <span>Expected Due</span>
-            <strong>{money.format(expectedDue)}</strong>
+            <span>{t("detail.expectedDue")}</span>
+            <strong>{formatMoney(expectedDue)}</strong>
           </div>
           <div className="balance-card">
-            <span>Unpaid Interest</span>
-            <strong>{money.format(loan.unpaidInterest)}</strong>
+            <span>{t("detail.unpaidInterest")}</span>
+            <strong>{formatMoney(loan.unpaidInterest)}</strong>
           </div>
           <div className="balance-card">
-            <span>Credit Balance</span>
-            <strong>{money.format(loan.creditBalance)}</strong>
+            <span>{t("detail.creditBalance")}</span>
+            <strong>{formatMoney(loan.creditBalance)}</strong>
           </div>
           <div className="balance-card">
-            <span>Accumulated Profit</span>
-            <strong>{money.format(loan.accumulatedProfit)}</strong>
+            <span>{t("detail.accumulatedProfit")}</span>
+            <strong>{formatMoney(loan.accumulatedProfit)}</strong>
           </div>
         </div>
       </section>
@@ -279,14 +276,14 @@ export function LoanDetailContent({
       <section className="panel">
         <div className="section-heading">
           <div>
-            <h2>Payment history</h2>
-            <p>Actual received payments, partials, and overpayments.</p>
+            <h2>{t("detail.paymentHistory")}</h2>
+            <p>{t("detail.paymentHistoryActiveDescription")}</p>
           </div>
-          <span className="status-pill">{visiblePayments.length} records</span>
+          <span className="status-pill">{visiblePayments.length} {t("common.records")}</span>
         </div>
         {displayError ? (
           <div className="empty-state empty-state--error">
-            <h3>Could not load history</h3>
+            <h3>{t("detail.couldNotLoadHistory")}</h3>
             <p>{displayError}</p>
           </div>
         ) : (
@@ -297,15 +294,15 @@ export function LoanDetailContent({
       <section className="panel quick-action-panel">
         <div className="section-heading">
           <div>
-            <h2>Quick actions</h2>
-            <p>Payment and due-date actions</p>
+            <h2>{t("detail.quickActions")}</h2>
+            <p>{t("detail.quickActionsDescription")}</p>
           </div>
         </div>
         <div className="quick-action-grid">
           <ReceivePaymentSheet
             creditApplied={creditApplied}
             grossDue={grossDue}
-            label="Receive payment"
+            label={t("receive.title")}
             loanId={loan.id}
             onPaymentRecorded={handlePaymentRecorded}
             totalDue={totalDue}
@@ -325,8 +322,8 @@ export function LoanDetailContent({
       <section className="panel danger-zone-panel">
         <div className="section-heading">
           <div>
-            <h2>Danger zone</h2>
-            <p>Permanent removal for unwanted or mistaken loans.</p>
+            <h2>{t("detail.dangerZone")}</h2>
+            <p>{t("detail.dangerDescription")}</p>
           </div>
         </div>
         <DeleteLoanButton

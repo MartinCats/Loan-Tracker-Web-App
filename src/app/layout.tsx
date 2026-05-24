@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ViewportStabilizer } from "@/components/app/viewport-stabilizer";
+import { I18nProvider } from "@/lib/i18n/i18n-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,8 +41,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ViewportStabilizer />
-        {children}
+        <I18nProvider>
+          <ViewportStabilizer />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

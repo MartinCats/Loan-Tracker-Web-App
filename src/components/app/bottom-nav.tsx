@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { appRoutes } from "@/lib/routes";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/use-i18n";
 
 function RouteIcon({ icon }: { icon: (typeof appRoutes)[number]["icon"] }) {
   return <span aria-hidden="true" className={`nav-icon nav-icon--${icon}`} />;
@@ -13,6 +14,7 @@ function RouteIcon({ icon }: { icon: (typeof appRoutes)[number]["icon"] }) {
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export function BottomNav() {
             aria-current={isActive ? "page" : undefined}
           >
             <RouteIcon icon={route.icon} />
-            <span>{route.label}</span>
+            <span>{t(route.labelKey)}</span>
           </Link>
         );
       })}

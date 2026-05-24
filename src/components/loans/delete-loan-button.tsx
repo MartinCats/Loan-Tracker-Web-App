@@ -5,6 +5,7 @@ import { type FormEvent, useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import { deleteLoanWithState, type LoanActionState } from "@/lib/loans/actions";
 
 const initialState: LoanActionState = {
@@ -23,6 +24,7 @@ export function DeleteLoanButton({
   loanId,
   variant = "button",
 }: DeleteLoanButtonProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
@@ -34,7 +36,7 @@ export function DeleteLoanButton({
   useEffect(() => {
     if (state.status === "success") {
       setIsConfirming(false);
-      showFeedback("Loan deleted");
+      showFeedback(t("feedback.loanDeleted"));
       router.refresh();
 
       if (afterDeleteHref) {
@@ -55,7 +57,7 @@ export function DeleteLoanButton({
     window.setTimeout(() => {
       previewStore.deleteLoan(loanId);
       setPreviewMessage("Preview mode: loan deleted.");
-      showFeedback("Loan deleted");
+      showFeedback(t("feedback.loanDeleted"));
       setIsConfirming(false);
       setIsPreviewPending(false);
 
@@ -80,7 +82,7 @@ export function DeleteLoanButton({
           }}
           type="button"
         >
-          Delete loan
+          {t("delete.action")}
         </button>
         {!isConfirming && (previewMessage || state.message) ? (
           <p
@@ -99,21 +101,18 @@ export function DeleteLoanButton({
       {isConfirming ? (
         <div className="sheet-backdrop" role="presentation">
           <section
-            aria-label="Delete loan confirmation"
+            aria-label={t("delete.title")}
             aria-modal="true"
             className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
               <div>
-                <h2>Delete loan?</h2>
-                <p>
-                  This permanently deletes this loan and its payment history.
-                  This cannot be undone.
-                </p>
+                <h2>{t("delete.title")}</h2>
+                <p>{t("delete.description")}</p>
               </div>
               <button
-                aria-label="Close delete confirmation"
+                aria-label={t("delete.close")}
                 className="icon-button"
                 onClick={() => setIsConfirming(false)}
                 type="button"
@@ -153,7 +152,7 @@ export function DeleteLoanButton({
                   onClick={() => setIsConfirming(false)}
                   type="button"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <DeleteSubmitButton forcePending={isPreviewPending} />
               </div>
@@ -166,6 +165,7 @@ export function DeleteLoanButton({
 }
 
 function DeleteSubmitButton({ forcePending = false }: { forcePending?: boolean }) {
+  const { t } = useI18n();
   const { pending } = useFormStatus();
   const isPending = pending || forcePending;
 
@@ -176,7 +176,7 @@ function DeleteSubmitButton({ forcePending = false }: { forcePending?: boolean }
       disabled={isPending}
       type="submit"
     >
-      {isPending ? "Deleting..." : "Delete loan"}
+      {isPending ? t("delete.deleting") : t("delete.action")}
     </button>
   );
 }

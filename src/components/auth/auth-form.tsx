@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { AuthState } from "@/app/auth/actions";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { useI18n } from "@/lib/i18n/use-i18n";
 
 type AuthFormProps = {
   action: (prevState: AuthState, formData: FormData) => Promise<AuthState>;
@@ -16,6 +17,7 @@ const initialState: AuthState = {
 };
 
 export function AuthForm({ action, mode, next = "/dashboard" }: AuthFormProps) {
+  const { t } = useI18n();
   const [state, formAction] = useActionState(action, initialState);
   const isSignIn = mode === "sign-in";
 
@@ -24,7 +26,7 @@ export function AuthForm({ action, mode, next = "/dashboard" }: AuthFormProps) {
       <input name="next" type="hidden" value={next} />
 
       <label className="field">
-        <span>Email</span>
+        <span>{t("auth.email")}</span>
         <input
           aria-describedby={`${mode}-email-hint`}
           autoComplete="email"
@@ -34,22 +36,22 @@ export function AuthForm({ action, mode, next = "/dashboard" }: AuthFormProps) {
           required
           type="email"
         />
-        <small id={`${mode}-email-hint`}>Use the email tied to this web app account.</small>
+        <small id={`${mode}-email-hint`}>{t("auth.emailHint")}</small>
       </label>
 
       <label className="field">
-        <span>Password</span>
+        <span>{t("auth.password")}</span>
         <input
           aria-describedby={`${mode}-password-hint`}
           autoComplete={isSignIn ? "current-password" : "new-password"}
           minLength={6}
           name="password"
-          placeholder="Minimum 6 characters"
+          placeholder={t("auth.passwordPlaceholder")}
           required
           type="password"
         />
         <small id={`${mode}-password-hint`}>
-          {isSignIn ? "Enter your account password." : "Use at least 6 characters."}
+          {isSignIn ? t("auth.passwordSignInHint") : t("auth.passwordSignUpHint")}
         </small>
       </label>
 
@@ -64,8 +66,8 @@ export function AuthForm({ action, mode, next = "/dashboard" }: AuthFormProps) {
         </p>
       ) : null}
 
-      <AuthSubmitButton pendingLabel={isSignIn ? "Signing in..." : "Creating..."}>
-        {isSignIn ? "Sign in" : "Create account"}
+      <AuthSubmitButton pendingLabel={isSignIn ? t("auth.signingIn") : t("auth.creating")}>
+        {isSignIn ? t("auth.signIn") : t("auth.createAccount")}
       </AuthSubmitButton>
     </form>
   );

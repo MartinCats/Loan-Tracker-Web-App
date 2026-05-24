@@ -8,6 +8,8 @@ import {
   getUrgencyRank,
   type LoanUrgency,
 } from "@/lib/loans/urgency";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { Loan } from "@/lib/types/loan";
 
 type LoanFilter = "all" | "overdue" | "due-today" | "upcoming";
@@ -19,18 +21,18 @@ type LoanBrowserState = {
   sort: LoanSort;
 };
 
-const filterOptions: Array<{ label: string; value: LoanFilter }> = [
-  { label: "All", value: "all" },
-  { label: "Overdue", value: "overdue" },
-  { label: "Due today", value: "due-today" },
-  { label: "Upcoming", value: "upcoming" },
+const filterOptions: Array<{ labelKey: MessageKey; value: LoanFilter }> = [
+  { labelKey: "loans.all", value: "all" },
+  { labelKey: "loans.overdue", value: "overdue" },
+  { labelKey: "loans.dueToday", value: "due-today" },
+  { labelKey: "loans.upcoming", value: "upcoming" },
 ];
 
-const sortOptions: Array<{ label: string; value: LoanSort }> = [
-  { label: "Urgency", value: "urgency" },
-  { label: "Name", value: "name" },
-  { label: "Principal", value: "principal" },
-  { label: "Due date", value: "due-date" },
+const sortOptions: Array<{ labelKey: MessageKey; value: LoanSort }> = [
+  { labelKey: "loans.urgency", value: "urgency" },
+  { labelKey: "loans.name", value: "name" },
+  { labelKey: "loans.principal", value: "principal" },
+  { labelKey: "loans.dueDate", value: "due-date" },
 ];
 
 export function LoanBrowser({
@@ -40,6 +42,7 @@ export function LoanBrowser({
   loans: Loan[];
   todayDate: string;
 }) {
+  const { t } = useI18n();
   const [state, setState] = useState<LoanBrowserState>({
     search: "",
     filter: "all",
@@ -76,22 +79,22 @@ export function LoanBrowser({
     <div className="loan-browser plain-loan-browser">
       <div className="compact-browser-controls">
         <label className="plain-field">
-          <span>Search</span>
+          <span>{t("common.search")}</span>
           <input
             autoComplete="off"
             name="loanSearch"
             onChange={(event) =>
               setState((current) => ({ ...current, search: event.target.value }))
             }
-            placeholder="Borrower name"
+            placeholder={t("loans.borrowerName")}
             type="search"
             value={state.search}
           />
         </label>
 
         <div className="chip-group">
-          <span>Sort</span>
-          <div className="chip-scroll" role="group" aria-label="Sort loans">
+          <span>{t("common.sort")}</span>
+          <div className="chip-scroll" role="group" aria-label={t("common.sort")}>
             {sortOptions.map((option) => (
               <button
                 aria-pressed={state.sort === option.value}
@@ -102,7 +105,7 @@ export function LoanBrowser({
                 }
                 type="button"
               >
-                {option.label}
+                {t(option.labelKey)}
               </button>
             ))}
           </div>
@@ -110,8 +113,8 @@ export function LoanBrowser({
       </div>
 
       <div className="chip-group">
-        <span>Filter</span>
-        <div className="chip-scroll" role="group" aria-label="Loan filters">
+        <span>{t("common.filter")}</span>
+        <div className="chip-scroll" role="group" aria-label={t("common.filter")}>
           {filterOptions.map((option) => (
             <button
               aria-pressed={state.filter === option.value}
@@ -122,7 +125,7 @@ export function LoanBrowser({
               }
               type="button"
             >
-              {option.label}
+              {t(option.labelKey)}
             </button>
           ))}
         </div>
@@ -138,12 +141,12 @@ export function LoanBrowser({
               onClick={() => setState((current) => ({ ...current, search: "" }))}
               type="button"
             >
-              Clear search
+              {t("loans.clearSearch")}
             </button>
           ) : null
         }
-        emptyDescription={getEmptyDescription(state.filter, state.search)}
-        emptyTitle={getEmptyTitle(state.filter, state.search)}
+        emptyDescription={getEmptyDescription(state.filter, state.search, t)}
+        emptyTitle={getEmptyTitle(state.filter, state.search, t)}
         loans={visibleLoans}
         mode="active"
         todayDate={todayDate}
@@ -173,38 +176,46 @@ function sortLoans(a: Loan, b: Loan, sort: LoanSort, todayDate: string) {
   }
 }
 
-function getEmptyTitle(filter: LoanFilter, search: string) {
+function getEmptyTitle(
+  filter: LoanFilter,
+  search: string,
+  t: (key: MessageKey) => string,
+) {
   if (search) {
-    return "No matching loans";
+    return t("loans.noMatching");
   }
 
   if (filter === "overdue") {
-    return "No overdue loans";
+    return t("loans.noOverdue");
   }
 
   if (filter === "due-today") {
-    return "Nothing due today";
+    return t("loans.nothingDueToday");
   }
 
   if (filter === "upcoming") {
-    return "No upcoming loans";
+    return t("loans.noUpcoming");
   }
 
-  return "No active loans";
+  return t("loans.noActive");
 }
 
-function getEmptyDescription(filter: LoanFilter, search: string) {
+function getEmptyDescription(
+  filter: LoanFilter,
+  search: string,
+  t: (key: MessageKey) => string,
+) {
   if (search) {
-    return "Try another borrower name or clear the search.";
+    return t("loans.tryAnother");
   }
 
   const descriptions: Record<LoanUrgency | "all" | "due-today" | "upcoming", string> = {
-    all: "Create new loans from the Dashboard when you are ready.",
-    overdue: "Good. No active loans are currently past due.",
-    "due-today": "No active loans are due today.",
-    upcoming: "No active loans have future due dates.",
-    healthy: "No active loans are currently past due.",
-    "due-soon": "No active loans are due in the next few days.",
+    all: t("loans.createFromDashboard"),
+    overdue: t("loans.noPastDue"),
+    "due-today": t("loans.noneDueToday"),
+    upcoming: t("loans.noFutureDue"),
+    healthy: t("loans.noPastDue"),
+    "due-soon": t("loans.noFutureDue"),
   };
 
   return descriptions[filter];

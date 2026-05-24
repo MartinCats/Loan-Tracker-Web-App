@@ -1774,6 +1774,18 @@ a,
   grid-template-columns: 7.5rem minmax(0, 1fr);
 }
 
+.settings-row--language {
+  align-items: start;
+}
+
+.language-toggle {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
 .settings-row strong {
   color: var(--color-muted);
   font-weight: 600;
@@ -1821,6 +1833,15 @@ a,
     border-color 160ms var(--ease-out),
     color 160ms var(--ease-out),
     transform 140ms var(--ease-out);
+}
+
+.bottom-nav__item span:not(.nav-icon) {
+  max-width: 100%;
+  overflow: hidden;
+  line-height: 1.05;
+  padding-top: 0.0625rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottom-nav__item.is-active {

@@ -5,6 +5,8 @@ import { type FormEvent, useActionState, useEffect, useMemo, useState } from "re
 import { createLoanAction, type LoanActionState } from "@/lib/loans/actions";
 import { getSuggestedFirstDueDate } from "@/lib/loans/due-date";
 import { paymentCycleOptions } from "@/lib/loans/payment-cycle";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import type { PaymentCycle } from "@/lib/types/loan";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
@@ -16,6 +18,7 @@ const initialState: LoanActionState = {
 };
 
 export function CreateLoanSheet() {
+  const { t } = useI18n();
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
@@ -42,7 +45,7 @@ export function CreateLoanSheet() {
   useEffect(() => {
     if (state.status === "success") {
       setIsOpen(false);
-      showFeedback("Loan added");
+      showFeedback(t("feedback.loanAdded"));
       router.refresh();
       scrollToNewestLoan();
     } else if (state.status === "error" && state.message) {
@@ -83,7 +86,7 @@ export function CreateLoanSheet() {
     });
     window.setTimeout(() => {
       setPreviewMessage("Preview mode: loan added. Data resets on refresh.");
-      showFeedback("Loan added");
+      showFeedback(t("feedback.loanAdded"));
       setIsOpen(false);
       setPaymentCycle("monthly");
       setHasEditedDueDate(false);
@@ -97,7 +100,7 @@ export function CreateLoanSheet() {
       <div className="sheet-trigger-group">
         <button className="plain-button plain-button--primary" onClick={() => setIsOpen(true)} type="button">
           <span aria-hidden="true">+</span>
-          Add loan
+          {t("create.addLoan")}
         </button>
         {!isOpen && previewMessage ? (
           <p className="inline-status is-success" role="status">
@@ -109,18 +112,18 @@ export function CreateLoanSheet() {
       {isOpen ? (
         <div className="sheet-backdrop" role="presentation">
           <section
-            aria-label="Create loan"
+            aria-label={t("create.newLoan")}
             aria-modal="true"
             className="sheet sheet--compact"
             role="dialog"
           >
             <div className="section-heading">
               <div>
-                <h2>New loan</h2>
-                <p>Core terms only. Payments come later.</p>
+                <h2>{t("create.newLoan")}</h2>
+                <p>{t("create.description")}</p>
               </div>
               <button
-                aria-label="Close create loan sheet"
+                aria-label={t("create.close")}
                 className="icon-button"
                 onClick={() => setIsOpen(false)}
                 type="button"
@@ -135,11 +138,11 @@ export function CreateLoanSheet() {
               onSubmit={handleSubmit}
             >
               <label className="field">
-                <span>Borrower</span>
+                <span>{t("create.borrower")}</span>
                 <input
                   autoComplete="name"
                   name="borrowerName"
-                  placeholder="Borrower name"
+                  placeholder={t("loans.borrowerName")}
                   required
                   type="text"
                 />
@@ -147,7 +150,7 @@ export function CreateLoanSheet() {
 
               <div className="form-grid-two">
                 <label className="field">
-                  <span>Principal</span>
+                  <span>{t("create.principal")}</span>
                   <input
                     inputMode="decimal"
                     min="0.01"
@@ -160,7 +163,7 @@ export function CreateLoanSheet() {
                 </label>
 
                 <label className="field">
-                  <span>Interest %</span>
+                  <span>{t("create.interest")}</span>
                   <input
                     inputMode="decimal"
                     min="0"
@@ -174,9 +177,9 @@ export function CreateLoanSheet() {
               </div>
 
               <div className="field">
-                <span>Payment cycle</span>
+                <span>{t("create.paymentCycle")}</span>
                 <input name="paymentCycle" type="hidden" value={paymentCycle} />
-                <div className="cycle-chip-grid" role="group" aria-label="Payment cycle">
+                <div className="cycle-chip-grid" role="group" aria-label={t("create.paymentCycle")}>
                   {paymentCycleOptions.map((option) => (
                     <button
                       aria-pressed={paymentCycle === option.value}
@@ -185,21 +188,21 @@ export function CreateLoanSheet() {
                       onClick={() => setPaymentCycle(option.value)}
                       type="button"
                     >
-                      {option.shortLabel}
+                      {t(`cycle.${option.value}` as MessageKey)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="field">
-                <span>Current due date</span>
+                <span>{t("create.currentDueDate")}</span>
                 <div className="date-field">
                   <span className="date-field__display">
-                    {dueDate ? formatDate(dueDate) : "Choose date"}
+                    {dueDate ? formatDate(dueDate) : t("create.chooseDate")}
                   </span>
-                  <span className="date-field__hint">Change</span>
+                  <span className="date-field__hint">{t("common.change")}</span>
                   <input
-                    aria-label="Current due date"
+                    aria-label={t("create.currentDueDate")}
                     className="date-field__native"
                     name="currentDueDate"
                     onChange={(event) => {
@@ -211,7 +214,7 @@ export function CreateLoanSheet() {
                     value={dueDate}
                   />
                 </div>
-                <small>Suggested from payment cycle. You can edit it.</small>
+                <small>{t("create.suggestedHint")}</small>
               </div>
 
               {hasEditedDueDate && dueDate !== suggestedDueDate ? (
@@ -223,23 +226,23 @@ export function CreateLoanSheet() {
                   }}
                   type="button"
                 >
-                  Use suggested date
+                  {t("create.useSuggestedDate")}
                 </button>
               ) : null}
 
               <div className="sheet-actions">
                 <AuthSubmitButton
                   forcePending={isPreviewPending}
-                  pendingLabel="Creating..."
+                  pendingLabel={t("create.creating")}
                 >
-                  Create loan
+                  {t("create.createLoan")}
                 </AuthSubmitButton>
                 <button
                   className="form-button form-button--secondary"
                   onClick={() => setIsOpen(false)}
                   type="button"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
 

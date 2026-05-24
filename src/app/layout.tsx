@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ViewportStabilizer } from "@/components/app/viewport-stabilizer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,7 +39,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ViewportStabilizer />
+        {children}
+      </body>
     </html>
   );
 }

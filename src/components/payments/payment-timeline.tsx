@@ -14,6 +14,14 @@ const labels: Record<PaymentHistory["type"], string> = {
   loan_closed: "Loan closed",
 };
 
+const fallbackDescriptions: Record<PaymentHistory["type"], string> = {
+  payment_received: "Full interest received",
+  partial_payment: "Partial interest received",
+  overpayment: "Extra held as credit",
+  reschedule: "Due date changed",
+  loan_closed: "Loan moved to archive",
+};
+
 type PaymentTimelineProps = {
   payments: PaymentHistory[];
 };
@@ -34,11 +42,51 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
         <article className="timeline-item" key={payment.id}>
           <div>
             <h3>{labels[payment.type]}</h3>
-            <p>{payment.note || payment.createdAt}</p>
+            <p>{payment.note || fallbackDescriptions[payment.type]}</p>
+            <time dateTime={payment.createdAt}>
+              {formatPaymentDate(payment.createdAt)}
+            </time>
           </div>
           <strong>{money.format(payment.amount)}</strong>
         </article>
       ))}
     </div>
   );
+}
+
+function formatPaymentDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const now = new Date();
+  const today = startOfLocalDay(now);
+  const targetDay = startOfLocalDay(date);
+  const dayDifference = Math.round(
+    (today.getTime() - targetDay.getTime()) / 86_400_000,
+  );
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  if (dayDifference === 0) {
+    return `Today, ${time}`;
+  }
+
+  if (dayDifference === 1) {
+    return `Yesterday, ${time}`;
+  }
+
+  return `${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date)} · ${time}`;
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }

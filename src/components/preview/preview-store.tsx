@@ -7,9 +7,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { previewLoans } from "@/lib/preview-data";
+import { previewLoans, previewPayments } from "@/lib/preview-data";
 import { calculatePayment } from "@/lib/payments/calculator";
-import type { Loan, PaymentCycle } from "@/lib/types/loan";
+import type { Loan, PaymentCycle, PaymentHistory } from "@/lib/types/loan";
 
 type PreviewCreateLoanInput = {
   borrowerName: string;
@@ -22,9 +22,16 @@ type PreviewCreateLoanInput = {
 type PreviewStoreValue = {
   isPreviewMode: true;
   loans: Loan[];
+  payments: PaymentHistory[];
   addLoan: (input: PreviewCreateLoanInput) => Loan;
   archiveLoan: (loanId: string) => void;
-  receivePayment: (loanId: string, amount: number) => void;
+  closeLoan: (loanId: string) => void;
+  deleteLoan: (loanId: string) => void;
+  receivePayment: (
+    loanId: string,
+    amount: number,
+    note?: string,
+  ) => { nextDueDate?: string } | null;
   rescheduleLoan: (loanId: string, currentDueDate: string) => void;
 };
 
@@ -37,6 +44,9 @@ export function PreviewProvider({
 }>) {
   const [loans, setLoans] = useState<Loan[]>(() =>
     previewLoans.map((loan) => ({ ...loan })),
+  );
+  const [payments, setPayments] = useState<PaymentHistory[]>(() =>
+    previewPayments.map((payment) => ({ ...payment })),
   );
 
   const addLoan = useCallback((input: PreviewCreateLoanInput) => {
@@ -72,25 +82,62 @@ export function PreviewProvider({
     );
   }, []);
 
-  const receivePayment = useCallback((loanId: string, amount: number) => {
+  const closeLoan = useCallback((loanId: string) => {
+    setLoans((current) =>
+      current.map((loan) =>
+        loan.id === loanId && loan.status === "active"
+          ? { ...loan, status: "closed", updatedAt: new Date().toISOString() }
+          : loan,
+      ),
+    );
+  }, []);
+
+  const deleteLoan = useCallback((loanId: string) => {
+    setLoans((current) => current.filter((loan) => loan.id !== loanId));
+    setPayments((current) =>
+      current.filter((payment) => payment.loanId !== loanId),
+    );
+  }, []);
+
+  const receivePayment = useCallback((loanId: string, amount: number, note?: string) => {
+    const loan = loans.find(
+      (item) => item.id === loanId && item.status === "active",
+    );
+
+    if (!loan) {
+      return null;
+    }
+
+    const payment = calculatePayment(loan, amount);
+    const paymentHistory: PaymentHistory = {
+      id: `preview-payment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: "preview-user",
+      loanId,
+      type: payment.historyType,
+      amount,
+      note: note?.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
     setLoans((current) =>
       current.map((loan) => {
         if (loan.id !== loanId || loan.status !== "active") {
           return loan;
         }
 
-        const payment = calculatePayment(loan, amount);
-
         return {
           ...loan,
           accumulatedProfit: payment.accumulatedProfit,
           unpaidInterest: payment.unpaidInterest,
           creditBalance: payment.creditBalance,
+          currentDueDate: payment.nextDueDate ?? loan.currentDueDate,
           updatedAt: new Date().toISOString(),
         };
       }),
     );
-  }, []);
+    setPayments((current) => [paymentHistory, ...current]);
+    return { nextDueDate: payment.nextDueDate ?? undefined };
+  }, [loans]);
 
   const rescheduleLoan = useCallback((loanId: string, currentDueDate: string) => {
     setLoans((current) =>
@@ -112,12 +159,24 @@ export function PreviewProvider({
     () => ({
       isPreviewMode: true,
       loans,
+      payments,
       addLoan,
       archiveLoan,
+      closeLoan,
+      deleteLoan,
       receivePayment,
       rescheduleLoan,
     }),
-    [addLoan, archiveLoan, loans, receivePayment, rescheduleLoan],
+    [
+      addLoan,
+      archiveLoan,
+      closeLoan,
+      deleteLoan,
+      loans,
+      payments,
+      receivePayment,
+      rescheduleLoan,
+    ],
   );
 
   return (

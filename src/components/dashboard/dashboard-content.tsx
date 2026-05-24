@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { CreateLoanSheet } from "@/components/loans/create-loan-sheet";
-import { DueDateLabel } from "@/components/loans/due-date-label";
-import { LoanStatusPill } from "@/components/loans/loan-status-pill";
+import { DashboardDueCard } from "@/components/dashboard/dashboard-due-card";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -113,24 +111,9 @@ export function DashboardContent({
             </div>
           </div>
         ) : (
-          <div className="loan-list">
+          <div className="dashboard-due-list">
             {activeLoans.slice(0, 4).map((loan) => (
-              <article className="loan-row loan-row--interactive" key={loan.id}>
-                <Link className="loan-row__link" href={`/loans/${loan.id}`}>
-                  <h3>{loan.borrowerName}</h3>
-                  <p>
-                    {money.format(loan.principal)} principal -{" "}
-                    {loan.interestRate}% interest
-                  </p>
-                </Link>
-                <div className="loan-row__meta">
-                  <LoanStatusPill loan={loan} todayDate={todayDate} />
-                  <span>Due</span>
-                  <strong>
-                    <DueDateLabel dueDate={loan.currentDueDate} todayDate={todayDate} />
-                  </strong>
-                </div>
-              </article>
+              <DashboardDueCard key={loan.id} loan={loan} todayDate={todayDate} />
             ))}
           </div>
         )}

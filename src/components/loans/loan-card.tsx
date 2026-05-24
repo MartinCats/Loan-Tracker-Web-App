@@ -3,7 +3,10 @@ import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
 import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
 import type { Loan } from "@/lib/types/loan";
-import { ArchiveLoanButton } from "@/components/loans/archive-loan-button";
+import {
+  calculateCreditApplied,
+  calculateTotalDue,
+} from "@/lib/payments/calculator";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -18,30 +21,52 @@ type LoanCardProps = {
 };
 
 export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
+  const currentDue = calculateTotalDue(loan);
+  const creditApplied = calculateCreditApplied(loan);
+  const detailHref = mode === "archive" ? `/archive/${loan.id}` : `/loans/${loan.id}`;
+  const amountLabel = mode === "archive" ? "Profit" : "Current due";
+  const amount = mode === "archive" ? loan.accumulatedProfit : currentDue;
+
   return (
-    <article className="loan-row loan-row--tall loan-row--interactive">
-      <Link className="loan-row__link" href={`/loans/${loan.id}`}>
-        <h3>
-          {loan.borrowerName}
-        </h3>
-        <p>
-          {formatPaymentCycle(loan.paymentCycle)} -{" "}
+    <article className="loan-row loan-row--interactive" data-loan-id={loan.id}>
+      <Link className="loan-row__link" href={detailHref}>
+        <div className="loan-row__top">
+          <h3>{loan.borrowerName}</h3>
+          <LoanStatusPill loan={loan} todayDate={todayDate} />
+        </div>
+
+        <p className="loan-row__terms">
+          {formatPaymentCycle(loan.paymentCycle)} cycle -{" "}
           <DueDateLabel dueDate={loan.currentDueDate} todayDate={todayDate} />
+          {mode === "active" ? (
+            <span> - Due {formatDueDate(loan.currentDueDate)}</span>
+          ) : null}
         </p>
-        {mode === "active" && loan.unpaidInterest > 0 ? (
-          <p>{money.format(loan.unpaidInterest)} unpaid interest</p>
-        ) : null}
+
+        <div className="loan-row__bottom">
+          <span>
+            {amountLabel}
+            {mode === "active" && currentDue === 0 && creditApplied > 0 ? (
+              <small>Credit covers this cycle</small>
+            ) : null}
+          </span>
+          <strong>{money.format(amount)}</strong>
+        </div>
       </Link>
-      <div className="loan-row__meta">
-        {mode === "active" ? <LoanStatusPill loan={loan} todayDate={todayDate} /> : null}
-        <span>{mode === "archive" ? "Profit" : "Principal"}</span>
-        <strong>
-          {money.format(
-            mode === "archive" ? loan.accumulatedProfit : loan.principal,
-          )}
-        </strong>
-        {mode === "active" ? <ArchiveLoanButton loanId={loan.id} /> : null}
-      </div>
     </article>
   );
+}
+
+function formatDueDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }

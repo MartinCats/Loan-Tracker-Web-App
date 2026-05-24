@@ -37,8 +37,8 @@ function parseReceivePayment(formData: FormData):
     return { ok: false, message: "Loan is missing." };
   }
 
-  if (amount === null || amount <= 0) {
-    return { ok: false, message: "Payment amount must be greater than zero." };
+  if (amount === null || amount < 0) {
+    return { ok: false, message: "Payment amount cannot be negative." };
   }
 
   return {
@@ -128,6 +128,11 @@ export async function receivePaymentAction(
   }
 
   const payment = calculatePayment(loan, parsed.input.amount);
+
+  if (parsed.input.amount === 0 && payment.creditApplied <= 0) {
+    return { status: "error", message: "Payment amount must be greater than zero." };
+  }
+
   const historyRow: PaymentHistoryInsert = {
     user_id: auth.user.id,
     loan_id: loan.id,
@@ -150,6 +155,7 @@ export async function receivePaymentAction(
       accumulated_profit: payment.accumulatedProfit,
       unpaid_interest: payment.unpaidInterest,
       credit_balance: payment.creditBalance,
+      ...(payment.nextDueDate ? { current_due_date: payment.nextDueDate } : {}),
     })
     .eq("id", loan.id)
     .eq("user_id", auth.user.id)
@@ -161,5 +167,9 @@ export async function receivePaymentAction(
 
   revalidatePaymentViews(loan.id);
 
-  return { status: "success", message: "Payment recorded." };
+  return {
+    status: "success",
+    message: "Payment recorded.",
+    nextDueDate: payment.nextDueDate ?? undefined,
+  };
 }

@@ -1,15 +1,24 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { createLoanFormAction } from "@/lib/loans/actions";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useActionState, useEffect, useMemo, useState } from "react";
+import { createLoanAction, type LoanActionState } from "@/lib/loans/actions";
 import { getSuggestedFirstDueDate } from "@/lib/loans/due-date";
 import { paymentCycleOptions } from "@/lib/loans/payment-cycle";
 import type { PaymentCycle } from "@/lib/types/loan";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
+import { useActionFeedback } from "@/components/ui/action-feedback";
+
+const initialState: LoanActionState = {
+  status: "idle",
+  message: "",
+};
 
 export function CreateLoanSheet() {
+  const router = useRouter();
   const previewStore = usePreviewStore();
+  const { showFeedback } = useActionFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const [paymentCycle, setPaymentCycle] = useState<PaymentCycle>("monthly");
   const suggestedDueDate = useMemo(
@@ -21,12 +30,25 @@ export function CreateLoanSheet() {
   );
   const [hasEditedDueDate, setHasEditedDueDate] = useState(false);
   const [previewMessage, setPreviewMessage] = useState("");
+  const [isPreviewPending, setIsPreviewPending] = useState(false);
+  const [state, formAction] = useActionState(createLoanAction, initialState);
 
   useEffect(() => {
     if (!hasEditedDueDate) {
       setDueDate(suggestedDueDate);
     }
   }, [hasEditedDueDate, suggestedDueDate]);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      setIsOpen(false);
+      showFeedback("Loan added");
+      router.refresh();
+      scrollToNewestLoan();
+    } else if (state.status === "error" && state.message) {
+      showFeedback(state.message, "error");
+    }
+  }, [router, showFeedback, state]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (!previewStore) {
@@ -51,17 +73,23 @@ export function CreateLoanSheet() {
       return;
     }
 
-    previewStore.addLoan({
+    setIsPreviewPending(true);
+    const loan = previewStore.addLoan({
       borrowerName,
       principal,
       interestRate,
       paymentCycle,
       currentDueDate,
     });
-    setPreviewMessage("Preview mode: loan added. Data resets on refresh.");
-    setIsOpen(false);
-    setPaymentCycle("monthly");
-    setHasEditedDueDate(false);
+    window.setTimeout(() => {
+      setPreviewMessage("Preview mode: loan added. Data resets on refresh.");
+      showFeedback("Loan added");
+      setIsOpen(false);
+      setPaymentCycle("monthly");
+      setHasEditedDueDate(false);
+      setIsPreviewPending(false);
+      scrollToLoan(loan.id);
+    }, 120);
   }
 
   return (
@@ -102,7 +130,7 @@ export function CreateLoanSheet() {
             </div>
 
             <form
-              action={previewStore ? undefined : createLoanFormAction}
+              action={previewStore ? undefined : formAction}
               className="auth-form auth-form--compact"
               onSubmit={handleSubmit}
             >
@@ -163,20 +191,28 @@ export function CreateLoanSheet() {
                 </div>
               </div>
 
-              <label className="field">
+              <div className="field">
                 <span>Current due date</span>
-                <input
-                  name="currentDueDate"
-                  onChange={(event) => {
-                    setDueDate(event.target.value);
-                    setHasEditedDueDate(true);
-                  }}
-                  required
-                  type="date"
-                  value={dueDate}
-                />
+                <div className="date-field">
+                  <span className="date-field__display">
+                    {dueDate ? formatDate(dueDate) : "Choose date"}
+                  </span>
+                  <span className="date-field__hint">Change</span>
+                  <input
+                    aria-label="Current due date"
+                    className="date-field__native"
+                    name="currentDueDate"
+                    onChange={(event) => {
+                      setDueDate(event.target.value);
+                      setHasEditedDueDate(true);
+                    }}
+                    required
+                    type="date"
+                    value={dueDate}
+                  />
+                </div>
                 <small>Suggested from payment cycle. You can edit it.</small>
-              </label>
+              </div>
 
               {hasEditedDueDate && dueDate !== suggestedDueDate ? (
                 <button
@@ -192,7 +228,10 @@ export function CreateLoanSheet() {
               ) : null}
 
               <div className="sheet-actions">
-                <AuthSubmitButton pendingLabel="Creating loan...">
+                <AuthSubmitButton
+                  forcePending={isPreviewPending}
+                  pendingLabel="Creating..."
+                >
                   Create loan
                 </AuthSubmitButton>
                 <button
@@ -203,10 +242,47 @@ export function CreateLoanSheet() {
                   Cancel
                 </button>
               </div>
+
+              {state.status === "error" && state.message ? (
+                <p className="auth-message" role="alert">
+                  {state.message}
+                </p>
+              ) : null}
             </form>
           </section>
         </div>
       ) : null}
     </>
   );
+}
+
+function scrollToLoan(loanId: string) {
+  window.setTimeout(() => {
+    document
+      .querySelector<HTMLElement>(`[data-loan-id="${loanId}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 180);
+}
+
+function scrollToNewestLoan() {
+  window.setTimeout(() => {
+    document
+      .querySelector<HTMLElement>("[data-loan-id]")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 220);
+}
+
+function formatDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }

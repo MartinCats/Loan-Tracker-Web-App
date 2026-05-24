@@ -231,6 +231,7 @@ export async function archiveLoanWithState(
 
   revalidateLoanViews();
   revalidatePath(`/loans/${loanId}`);
+  revalidatePath(`/archive/${loanId}`);
 
   return { status: "success", message: "Loan archived." };
 }
@@ -282,4 +283,116 @@ export async function rescheduleLoanAction(
   revalidatePath(`/loans/${parsed.input.loanId}`);
 
   return { status: "success", message: "Due date updated." };
+}
+
+export async function closeLoanWithState(
+  _prevState: LoanActionState,
+  formData: FormData,
+): Promise<LoanActionState> {
+  if (isPreviewMode()) {
+    return {
+      status: "success",
+      message: "Preview mode: close loan simulated.",
+    };
+  }
+
+  const loanId = String(formData.get("loanId") ?? "").trim();
+
+  if (!loanId) {
+    return { status: "error", message: "Loan is missing." };
+  }
+
+  const auth = await getAuthenticatedSupabase();
+
+  if ("error" in auth) {
+    return { status: "error", message: auth.error };
+  }
+
+  const { data, error } = await auth.supabase
+    .from("loans")
+    .update({ status: "closed" })
+    .eq("id", loanId)
+    .eq("user_id", auth.user.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { status: "error", message: error.message };
+  }
+
+  if (!data) {
+    return { status: "error", message: "Only active loans can be closed." };
+  }
+
+  revalidateLoanViews();
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath(`/archive/${loanId}`);
+
+  return { status: "success", message: "Loan closed." };
+}
+
+export async function deleteLoanWithState(
+  _prevState: LoanActionState,
+  formData: FormData,
+): Promise<LoanActionState> {
+  if (isPreviewMode()) {
+    return {
+      status: "success",
+      message: "Preview mode: loan deleted.",
+    };
+  }
+
+  const loanId = String(formData.get("loanId") ?? "").trim();
+
+  if (!loanId) {
+    return { status: "error", message: "Loan is missing." };
+  }
+
+  const auth = await getAuthenticatedSupabase();
+
+  if ("error" in auth) {
+    return { status: "error", message: auth.error };
+  }
+
+  const { data: loan, error: findError } = await auth.supabase
+    .from("loans")
+    .select("id")
+    .eq("id", loanId)
+    .eq("user_id", auth.user.id)
+    .maybeSingle();
+
+  if (findError) {
+    return { status: "error", message: findError.message };
+  }
+
+  if (!loan) {
+    return { status: "error", message: "Loan not found." };
+  }
+
+  const { error: historyError } = await auth.supabase
+    .from("payment_histories")
+    .delete()
+    .eq("loan_id", loanId)
+    .eq("user_id", auth.user.id);
+
+  if (historyError) {
+    return { status: "error", message: historyError.message };
+  }
+
+  const { error: deleteError } = await auth.supabase
+    .from("loans")
+    .delete()
+    .eq("id", loanId)
+    .eq("user_id", auth.user.id);
+
+  if (deleteError) {
+    return { status: "error", message: deleteError.message };
+  }
+
+  revalidateLoanViews();
+  revalidatePath(`/loans/${loanId}`);
+  revalidatePath(`/archive/${loanId}`);
+
+  return { status: "success", message: "Loan deleted." };
 }

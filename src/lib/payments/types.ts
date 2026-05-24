@@ -27,6 +27,7 @@ export type ReceivePaymentInput = {
 export type PaymentActionState = {
   status: "idle" | "error" | "success";
   message: string;
+  nextDueDate?: string;
 };
 
 export function mapPaymentHistoryRow(row: PaymentHistoryRow): PaymentHistory {

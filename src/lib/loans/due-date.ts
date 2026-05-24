@@ -39,18 +39,25 @@ export function getSuggestedFirstDueDate(
   paymentCycle: PaymentCycle,
   todayDate = getTodayDateKeyUtc(),
 ) {
+  return advanceDueDateByCycle(todayDate, paymentCycle);
+}
+
+export function advanceDueDateByCycle(
+  currentDueDate: string,
+  paymentCycle: PaymentCycle,
+) {
   switch (paymentCycle) {
     case "daily":
-      return addDaysToDateKey(todayDate, 1);
+      return addDaysToDateKey(currentDueDate, 1);
     case "weekly":
-      return addDaysToDateKey(todayDate, 7);
+      return addDaysToDateKey(currentDueDate, 7);
     case "biweekly":
-      return addDaysToDateKey(todayDate, 14);
+      return addDaysToDateKey(currentDueDate, 14);
     case "every_10_days":
-      return addDaysToDateKey(todayDate, 10);
+      return addDaysToDateKey(currentDueDate, 10);
     case "monthly":
     default:
-      return addMonthsToDateKey(todayDate, 1);
+      return addMonthsToDateKey(currentDueDate, 1);
   }
 }
 

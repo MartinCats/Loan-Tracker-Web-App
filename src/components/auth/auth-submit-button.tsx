@@ -4,18 +4,24 @@ import { useFormStatus } from "react-dom";
 
 export function AuthSubmitButton({
   children,
+  forcePending = false,
   pendingLabel = "Working...",
-}: Readonly<{ children: React.ReactNode; pendingLabel?: string }>) {
+}: Readonly<{
+  children: React.ReactNode;
+  forcePending?: boolean;
+  pendingLabel?: string;
+}>) {
   const { pending } = useFormStatus();
+  const isPending = pending || forcePending;
 
   return (
     <button
-      aria-busy={pending}
+      aria-busy={isPending}
       className="form-button"
-      disabled={pending}
+      disabled={isPending}
       type="submit"
     >
-      {pending ? pendingLabel : children}
+      {isPending ? pendingLabel : children}
     </button>
   );
 }

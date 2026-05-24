@@ -8,6 +8,10 @@ export function LoanStatusPill({
   loan: Loan;
   todayDate: string;
 }) {
+  if (loan.status === "closed") {
+    return <span className="loan-status loan-status--healthy">Closed</span>;
+  }
+
   const urgency = getLoanUrgency(loan, todayDate);
 
   return (

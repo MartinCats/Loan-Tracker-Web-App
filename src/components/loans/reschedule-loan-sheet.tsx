@@ -3,6 +3,7 @@
 import { type FormEvent, useActionState, useEffect, useState } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
+import { useActionFeedback } from "@/components/ui/action-feedback";
 import { rescheduleLoanAction, type LoanActionState } from "@/lib/loans/actions";
 
 const initialState: LoanActionState = {
@@ -14,24 +15,31 @@ type RescheduleLoanSheetProps = {
   loanId: string;
   currentDueDate: string;
   disabled?: boolean;
+  triggerVariant?: "button" | "card";
 };
 
 export function RescheduleLoanSheet({
   loanId,
   currentDueDate,
   disabled,
+  triggerVariant = "button",
 }: RescheduleLoanSheetProps) {
   const previewStore = usePreviewStore();
+  const { showFeedback } = useActionFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(currentDueDate);
   const [previewMessage, setPreviewMessage] = useState("");
+  const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [state, formAction] = useActionState(rescheduleLoanAction, initialState);
 
   useEffect(() => {
     if (state.status === "success") {
       setIsOpen(false);
+      showFeedback("Due date updated");
+    } else if (state.status === "error" && state.message) {
+      showFeedback(state.message, "error");
     }
-  }, [state.status]);
+  }, [showFeedback, state]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -51,16 +59,25 @@ export function RescheduleLoanSheet({
       return;
     }
 
-    previewStore.rescheduleLoan(loanId, nextDueDate);
-    setPreviewMessage("Preview mode: reschedule simulated.");
-    setIsOpen(false);
+    setIsPreviewPending(true);
+    window.setTimeout(() => {
+      previewStore.rescheduleLoan(loanId, nextDueDate);
+      setPreviewMessage("Preview mode: reschedule simulated.");
+      showFeedback("Due date updated");
+      setIsOpen(false);
+      setIsPreviewPending(false);
+    }, 120);
   }
 
   return (
     <>
       <div className="sheet-trigger-group">
         <button
-          className="action-button action-button--secondary"
+          className={
+            triggerVariant === "card"
+              ? "quick-action-card quick-action-card--reschedule"
+              : "action-button action-button--secondary"
+          }
           disabled={disabled}
           onClick={() => {
             setNextDueDate(currentDueDate);
@@ -69,18 +86,22 @@ export function RescheduleLoanSheet({
           }}
           type="button"
         >
-          Reschedule
+          {triggerVariant === "card" ? (
+            <>
+              <span aria-hidden="true" className="quick-action-card__icon">10</span>
+              <strong>Reschedule</strong>
+              <small>Move due date</small>
+            </>
+          ) : (
+            "Reschedule"
+          )}
         </button>
-        {!isOpen && (previewMessage || state.message) ? (
+        {!isOpen && previewMessage ? (
           <p
-            className={
-              previewMessage || state.status === "success"
-                ? "auth-message is-success"
-                : "auth-message"
-            }
-            role={state.status === "error" ? "alert" : "status"}
+            className="auth-message is-success"
+            role="status"
           >
-            {previewMessage || state.message}
+            {previewMessage}
           </p>
         ) : null}
       </div>
@@ -120,21 +141,29 @@ export function RescheduleLoanSheet({
                 <input readOnly type="text" value={formatDate(currentDueDate)} />
               </label>
 
-              <label className="field">
+              <div className="field">
                 <span>New due date</span>
-                <input
-                  name="currentDueDate"
-                  onChange={(event) => setNextDueDate(event.target.value)}
-                  required
-                  type="date"
-                  value={nextDueDate}
-                />
-              </label>
+                <div className="date-field">
+                  <span className="date-field__display">
+                    {nextDueDate ? formatDate(nextDueDate) : "Choose date"}
+                  </span>
+                  <span className="date-field__hint">Change</span>
+                  <input
+                    aria-label="New due date"
+                    className="date-field__native"
+                    name="currentDueDate"
+                    onChange={(event) => setNextDueDate(event.target.value)}
+                    required
+                    type="date"
+                    value={nextDueDate}
+                  />
+                </div>
+              </div>
 
-              {previewMessage || state.message ? (
+              {previewMessage || (state.status === "error" && state.message) ? (
                 <p
                   className={
-                    previewMessage || state.status === "success"
+                    previewMessage
                       ? "auth-message is-success"
                       : "auth-message"
                   }
@@ -145,7 +174,10 @@ export function RescheduleLoanSheet({
               ) : null}
 
               <div className="sheet-actions">
-                <AuthSubmitButton pendingLabel="Saving date...">
+                <AuthSubmitButton
+                  forcePending={isPreviewPending}
+                  pendingLabel="Saving..."
+                >
                   Save new due date
                 </AuthSubmitButton>
                 <button
@@ -153,7 +185,7 @@ export function RescheduleLoanSheet({
                   onClick={() => setIsOpen(false)}
                   type="button"
                 >
-                  {state.status === "success" ? "Done" : "Cancel"}
+                  Cancel
                 </button>
               </div>
             </form>

@@ -15,6 +15,21 @@ export type PaymentCalculation = {
   nextDueDate: string | null;
 };
 
+export type CloseLoanSettlement = {
+  principalReturn: number;
+  grossDue: number;
+  creditApplied: number;
+  finalDue: number;
+  totalPayoff: number;
+  amountReceived: number;
+  finalInterestReceived: number;
+  overpayment: number;
+  accumulatedProfit: number;
+  unpaidInterest: number;
+  creditBalance: number;
+  isPayoffSatisfied: boolean;
+};
+
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -68,4 +83,37 @@ export function calculatePayment(loan: Loan, amount: number): PaymentCalculation
       ? advanceDueDateByCycle(loan.currentDueDate, loan.paymentCycle)
       : null,
   };
+}
+
+export function calculateCloseLoanSettlement(
+  loan: Loan,
+  amountReceived = calculateCloseLoanPayoff(loan),
+): CloseLoanSettlement {
+  const principalReturn = roundMoney(loan.principal);
+  const grossDue = calculateGrossDue(loan);
+  const creditApplied = calculateCreditApplied(loan);
+  const finalDue = calculateTotalDue(loan);
+  const totalPayoff = calculateCloseLoanPayoff(loan);
+  const isPayoffSatisfied = amountReceived >= totalPayoff;
+  const overpayment = roundMoney(Math.max(amountReceived - totalPayoff, 0));
+  const finalInterestReceived = isPayoffSatisfied ? grossDue : 0;
+
+  return {
+    principalReturn,
+    grossDue,
+    creditApplied,
+    finalDue,
+    totalPayoff,
+    amountReceived: roundMoney(amountReceived),
+    finalInterestReceived,
+    overpayment,
+    accumulatedProfit: roundMoney(loan.accumulatedProfit + finalInterestReceived),
+    unpaidInterest: isPayoffSatisfied ? 0 : loan.unpaidInterest,
+    creditBalance: isPayoffSatisfied ? 0 : loan.creditBalance,
+    isPayoffSatisfied,
+  };
+}
+
+export function calculateCloseLoanPayoff(loan: Loan) {
+  return roundMoney(loan.principal + calculateTotalDue(loan));
 }

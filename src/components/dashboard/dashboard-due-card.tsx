@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
+import { useLoanCardNavigation } from "@/components/loans/use-loan-card-navigation";
 import { formatDueLabel } from "@/lib/loans/urgency";
 import { calculateCreditApplied, calculateTotalDue } from "@/lib/payments/calculator";
+import { cn } from "@/lib/cn";
 import type { Loan } from "@/lib/types/loan";
 
 const money = new Intl.NumberFormat("en-US", {
@@ -17,15 +21,25 @@ export function DashboardDueCard({
   loan: Loan;
   todayDate: string;
 }) {
+  const detailHref = `/loans/${loan.id}`;
+  const { isOpening, isPressed, linkProps } = useLoanCardNavigation(detailHref);
   const currentDue = calculateTotalDue(loan);
   const creditApplied = calculateCreditApplied(loan);
 
   return (
     <article
-      className="dashboard-due-card loan-row--interactive"
+      className={cn(
+        "dashboard-due-card loan-row--interactive",
+        isPressed && "is-pressed",
+        isOpening && "is-opening",
+      )}
       data-loan-id={loan.id}
     >
-      <Link className="dashboard-due-card__link" href={`/loans/${loan.id}`}>
+      <Link
+        className="dashboard-due-card__link"
+        href={detailHref}
+        {...linkProps}
+      >
         <div className="dashboard-due-card__main">
           <h3>{loan.borrowerName}</h3>
           <p>{formatDueLabel(loan.currentDueDate, todayDate)}</p>

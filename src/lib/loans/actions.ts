@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import type { CreateLoanInput, LoanInsert } from "@/lib/loans/types";
+import { mapLoanRow, type CreateLoanInput, type LoanInsert, type LoanRow } from "@/lib/loans/types";
 import { paymentCycleOptions } from "@/lib/loans/payment-cycle";
+import { calculateCloseLoanSettlement } from "@/lib/payments/calculator";
 import { isPreviewMode } from "@/lib/preview";
 import type { PaymentCycle } from "@/lib/types/loan";
 
@@ -84,6 +85,31 @@ function parseRescheduleLoan(formData: FormData):
     input: {
       loanId,
       currentDueDate,
+    },
+  };
+}
+
+function parseCloseLoan(formData: FormData):
+  | { ok: true; input: { amountReceived: number; loanId: string; note: string } }
+  | { ok: false; message: string } {
+  const loanId = String(formData.get("loanId") ?? "").trim();
+  const amountReceived = getNumberValue(formData, "amountReceived");
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (!loanId) {
+    return { ok: false, message: "Loan is missing." };
+  }
+
+  if (amountReceived === null || amountReceived < 0) {
+    return { ok: false, message: "Enter a valid settlement amount." };
+  }
+
+  return {
+    ok: true,
+    input: {
+      amountReceived,
+      loanId,
+      note,
     },
   };
 }
@@ -270,24 +296,46 @@ export async function rescheduleLoanAction(
     return { status: "error", message: auth.error };
   }
 
-  const { data, error } = await auth.supabase
+  const { data: loanData, error: loanError } = await auth.supabase
+    .from("loans")
+    .select("id,current_due_date")
+    .eq("id", parsed.input.loanId)
+    .eq("user_id", auth.user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (loanError) {
+    return { status: "error", message: loanError.message };
+  }
+
+  if (!loanData) {
+    return {
+      status: "error",
+      message: "Only active loans can be rescheduled.",
+    };
+  }
+
+  const { error } = await auth.supabase
     .from("loans")
     .update({ current_due_date: parsed.input.currentDueDate })
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
-    .eq("status", "active")
-    .select("id")
-    .maybeSingle();
+    .eq("status", "active");
 
   if (error) {
     return { status: "error", message: error.message };
   }
 
-  if (!data) {
-    return {
-      status: "error",
-      message: "Only active loans can be rescheduled.",
-    };
+  const { error: historyError } = await auth.supabase.from("payment_histories").insert({
+    user_id: auth.user.id,
+    loan_id: parsed.input.loanId,
+    type: "rescheduled",
+    amount: 0,
+    note: `From: ${formatDateForHistory(loanData.current_due_date)}\nTo: ${formatDateForHistory(parsed.input.currentDueDate)}`,
+  });
+
+  if (historyError) {
+    return { status: "error", message: historyError.message };
   }
 
   revalidateLoanViews();
@@ -307,10 +355,10 @@ export async function closeLoanWithState(
     };
   }
 
-  const loanId = String(formData.get("loanId") ?? "").trim();
+  const parsed = parseCloseLoan(formData);
 
-  if (!loanId) {
-    return { status: "error", message: "Loan is missing." };
+  if (!parsed.ok) {
+    return { status: "error", message: parsed.message };
   }
 
   const auth = await getAuthenticatedSupabase();
@@ -319,30 +367,117 @@ export async function closeLoanWithState(
     return { status: "error", message: auth.error };
   }
 
-  const { data, error } = await auth.supabase
+  const { data: loanData, error: loanError } = await auth.supabase
     .from("loans")
-    .update({ status: "closed" })
-    .eq("id", loanId)
+    .select(
+      "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
+    )
+    .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
     .eq("status", "active")
-    .select("id")
     .maybeSingle();
 
-  if (error) {
-    return { status: "error", message: error.message };
+  if (loanError) {
+    return { status: "error", message: loanError.message };
   }
 
-  if (!data) {
+  if (!loanData) {
     return { status: "error", message: "Only active loans can be closed." };
   }
 
-  revalidateLoanViews();
-  revalidatePath(`/loans/${loanId}`);
-  revalidatePath(`/archive/${loanId}`);
+  const loan = mapLoanRow(loanData as LoanRow);
+  const settlement = calculateCloseLoanSettlement(
+    loan,
+    parsed.input.amountReceived,
+  );
 
-  redirect(`/archive/${loanId}?feedback=loan-moved`);
+  if (!settlement.isPayoffSatisfied) {
+    return {
+      status: "error",
+      message: "Amount received is less than the payoff amount.",
+    };
+  }
+
+  const { error: updateError } = await auth.supabase
+    .from("loans")
+    .update({
+      status: "closed",
+      accumulated_profit: settlement.accumulatedProfit,
+      unpaid_interest: settlement.unpaidInterest,
+      credit_balance: settlement.creditBalance,
+    })
+    .eq("id", parsed.input.loanId)
+    .eq("user_id", auth.user.id)
+    .eq("status", "active");
+
+  if (updateError) {
+    return { status: "error", message: updateError.message };
+  }
+
+  const { error: historyError } = await auth.supabase.from("payment_histories").insert({
+    user_id: auth.user.id,
+    loan_id: parsed.input.loanId,
+    type: "loan_closed",
+    amount: settlement.amountReceived,
+    note: formatSettlementHistoryNote(settlement, parsed.input.note),
+  });
+
+  if (historyError) {
+    return { status: "error", message: historyError.message };
+  }
+
+  revalidateLoanViews();
+  revalidatePath(`/loans/${parsed.input.loanId}`);
+  revalidatePath(`/archive/${parsed.input.loanId}`);
+
+  redirect(`/archive/${parsed.input.loanId}?feedback=loan-moved`);
 
   return { status: "success", message: "Loan closed." };
+}
+
+function formatSettlementHistoryNote(
+  settlement: ReturnType<typeof calculateCloseLoanSettlement>,
+  note: string,
+) {
+  const lines = [
+    `Total settlement received: ${formatMoneyForHistory(settlement.amountReceived)}`,
+    `Principal returned: ${formatMoneyForHistory(settlement.principalReturn)}`,
+    `Final interest received: ${formatMoneyForHistory(settlement.finalInterestReceived)}`,
+    `Credit applied: ${formatMoneyForHistory(settlement.creditApplied)}`,
+  ];
+
+  if (settlement.overpayment > 0) {
+    lines.push(`Extra received: ${formatMoneyForHistory(settlement.overpayment)}`);
+  }
+
+  if (note) {
+    lines.push(`Note: ${note}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatMoneyForHistory(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(amount);
+}
+
+function formatDateForHistory(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 export async function deleteLoanWithState(

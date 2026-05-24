@@ -5,6 +5,7 @@ const {
 } = require("../src/lib/loans/due-date.ts");
 const {
   calculateCreditApplied,
+  calculateCloseLoanSettlement,
   calculateExpectedDue,
   calculateGrossDue,
   calculatePayment,
@@ -181,4 +182,76 @@ test("due date advancement uses date-only cycle rules", () => {
   assert.equal(advanceDueDateByCycle("2026-05-20", "every_10_days"), "2026-05-30");
   assert.equal(advanceDueDateByCycle("2026-05-20", "weekly"), "2026-05-27");
   assert.equal(advanceDueDateByCycle("2026-05-20", "daily"), "2026-05-21");
+});
+
+test("close loan with exact payoff closes with final interest profit only", () => {
+  const loan = makeLoan({
+    accumulatedProfit: 200,
+    principal: 10000,
+    interestRate: 8,
+    unpaidInterest: 0,
+  });
+  const settlement = calculateCloseLoanSettlement(loan, 10800);
+
+  assert.equal(settlement.principalReturn, 10000);
+  assert.equal(settlement.grossDue, 800);
+  assert.equal(settlement.creditApplied, 0);
+  assert.equal(settlement.finalDue, 800);
+  assert.equal(settlement.totalPayoff, 10800);
+  assert.equal(settlement.isPayoffSatisfied, true);
+  assert.equal(settlement.finalInterestReceived, 800);
+  assert.equal(settlement.accumulatedProfit, 1000);
+  assert.equal(settlement.unpaidInterest, 0);
+  assert.equal(settlement.creditBalance, 0);
+});
+
+test("close loan with insufficient payoff rejects settlement", () => {
+  const loan = makeLoan({
+    principal: 10000,
+    interestRate: 8,
+    unpaidInterest: 0,
+  });
+  const settlement = calculateCloseLoanSettlement(loan, 10799.99);
+
+  assert.equal(settlement.totalPayoff, 10800);
+  assert.equal(settlement.isPayoffSatisfied, false);
+  assert.equal(settlement.finalInterestReceived, 0);
+  assert.equal(settlement.accumulatedProfit, 0);
+  assert.equal(settlement.unpaidInterest, 0);
+});
+
+test("close loan with overpayment does not count principal or extra as profit", () => {
+  const loan = makeLoan({
+    accumulatedProfit: 120,
+    principal: 10000,
+    interestRate: 8,
+    unpaidInterest: 0,
+  });
+  const settlement = calculateCloseLoanSettlement(loan, 11000);
+
+  assert.equal(settlement.totalPayoff, 10800);
+  assert.equal(settlement.overpayment, 200);
+  assert.equal(settlement.finalInterestReceived, 800);
+  assert.equal(settlement.accumulatedProfit, 920);
+  assert.equal(settlement.creditBalance, 0);
+});
+
+test("close loan applies credit during payoff", () => {
+  const loan = makeLoan({
+    accumulatedProfit: 50,
+    creditBalance: 200,
+    principal: 10000,
+    interestRate: 8,
+    unpaidInterest: 0,
+  });
+  const settlement = calculateCloseLoanSettlement(loan, 10600);
+
+  assert.equal(settlement.grossDue, 800);
+  assert.equal(settlement.creditApplied, 200);
+  assert.equal(settlement.finalDue, 600);
+  assert.equal(settlement.totalPayoff, 10600);
+  assert.equal(settlement.isPayoffSatisfied, true);
+  assert.equal(settlement.finalInterestReceived, 800);
+  assert.equal(settlement.accumulatedProfit, 850);
+  assert.equal(settlement.creditBalance, 0);
 });

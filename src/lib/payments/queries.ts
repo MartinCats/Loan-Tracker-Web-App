@@ -42,14 +42,24 @@ export async function getLoanDetail(loanId: string) {
 
   const { supabase, user } = await getAuthenticatedSupabase();
 
-  const { data: loanData, error: loanError } = await supabase
-    .from("loans")
-    .select(
-      "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
-    )
-    .eq("id", loanId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [loanResult, paymentResult] = await Promise.all([
+    supabase
+      .from("loans")
+      .select(
+        "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
+      )
+      .eq("id", loanId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("payment_histories")
+      .select("id,user_id,loan_id,type,amount,note,created_at")
+      .eq("loan_id", loanId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const { data: loanData, error: loanError } = loanResult;
 
   if (loanError) {
     return {
@@ -67,12 +77,7 @@ export async function getLoanDetail(loanId: string) {
     };
   }
 
-  const { data: paymentData, error: paymentError } = await supabase
-    .from("payment_histories")
-    .select("id,user_id,loan_id,type,amount,note,created_at")
-    .eq("loan_id", loanId)
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const { data: paymentData, error: paymentError } = paymentResult;
 
   return {
     loan: mapLoanRow(loanData as LoanRow),

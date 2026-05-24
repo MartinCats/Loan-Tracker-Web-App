@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
+import { useLoanCardNavigation } from "@/components/loans/use-loan-card-navigation";
 import { formatPaymentCycle } from "@/lib/loans/payment-cycle";
+import { cn } from "@/lib/cn";
 import type { Loan } from "@/lib/types/loan";
 import {
   calculateCreditApplied,
@@ -24,12 +28,24 @@ export function LoanCard({ loan, mode, todayDate }: LoanCardProps) {
   const currentDue = calculateTotalDue(loan);
   const creditApplied = calculateCreditApplied(loan);
   const detailHref = mode === "archive" ? `/archive/${loan.id}` : `/loans/${loan.id}`;
+  const { isOpening, isPressed, linkProps } = useLoanCardNavigation(detailHref);
   const amountLabel = mode === "archive" ? "Profit" : "Current due";
   const amount = mode === "archive" ? loan.accumulatedProfit : currentDue;
 
   return (
-    <article className="loan-row loan-row--interactive" data-loan-id={loan.id}>
-      <Link className="loan-row__link" href={detailHref}>
+    <article
+      className={cn(
+        "loan-row loan-row--interactive",
+        isPressed && "is-pressed",
+        isOpening && "is-opening",
+      )}
+      data-loan-id={loan.id}
+    >
+      <Link
+        className="loan-row__link"
+        href={detailHref}
+        {...linkProps}
+      >
         <div className="loan-row__top">
           <h3>{loan.borrowerName}</h3>
           <LoanStatusPill loan={loan} todayDate={todayDate} />

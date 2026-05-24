@@ -8,7 +8,10 @@ import {
   useState,
 } from "react";
 import { previewLoans, previewPayments } from "@/lib/preview-data";
-import { calculatePayment } from "@/lib/payments/calculator";
+import {
+  calculateCloseLoanSettlement,
+  calculatePayment,
+} from "@/lib/payments/calculator";
 import type { Loan, PaymentCycle, PaymentHistory } from "@/lib/types/loan";
 
 type PreviewCreateLoanInput = {
@@ -25,7 +28,11 @@ type PreviewStoreValue = {
   payments: PaymentHistory[];
   addLoan: (input: PreviewCreateLoanInput) => Loan;
   archiveLoan: (loanId: string) => void;
-  closeLoan: (loanId: string) => void;
+  closeLoan: (
+    loanId: string,
+    amountReceived?: number,
+    note?: string,
+  ) => { error?: string } | null;
   deleteLoan: (loanId: string) => void;
   receivePayment: (
     loanId: string,
@@ -82,15 +89,52 @@ export function PreviewProvider({
     );
   }, []);
 
-  const closeLoan = useCallback((loanId: string) => {
+  const closeLoan = useCallback((loanId: string, amountReceived?: number, note?: string) => {
+    const loan = loans.find(
+      (item) => item.id === loanId && item.status === "active",
+    );
+
+    if (!loan) {
+      return null;
+    }
+
+    const settlement = calculateCloseLoanSettlement(loan, amountReceived);
+
+    if (!settlement.isPayoffSatisfied) {
+      return {
+        error: "Amount received is less than the payoff amount.",
+      };
+    }
+
+    const timestamp = new Date().toISOString();
+    const paymentHistory: PaymentHistory = {
+      id: `preview-close-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: "preview-user",
+      loanId,
+      type: "loan_closed",
+      amount: settlement.amountReceived,
+      note: formatSettlementHistoryNote(settlement, note?.trim() ?? ""),
+      createdAt: timestamp,
+    };
+
     setLoans((current) =>
       current.map((loan) =>
         loan.id === loanId && loan.status === "active"
-          ? { ...loan, status: "closed", updatedAt: new Date().toISOString() }
+          ? {
+              ...loan,
+              accumulatedProfit: settlement.accumulatedProfit,
+              creditBalance: settlement.creditBalance,
+              status: "closed",
+              unpaidInterest: settlement.unpaidInterest,
+              updatedAt: timestamp,
+            }
           : loan,
       ),
     );
-  }, []);
+    setPayments((current) => [paymentHistory, ...current]);
+
+    return {};
+  }, [loans]);
 
   const deleteLoan = useCallback((loanId: string) => {
     setLoans((current) => current.filter((loan) => loan.id !== loanId));
@@ -140,6 +184,16 @@ export function PreviewProvider({
   }, [loans]);
 
   const rescheduleLoan = useCallback((loanId: string, currentDueDate: string) => {
+    const currentLoan = loans.find(
+      (loan) => loan.id === loanId && loan.status === "active",
+    );
+
+    if (!currentLoan) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+
     setLoans((current) =>
       current.map((loan) => {
         if (loan.id !== loanId || loan.status !== "active") {
@@ -149,11 +203,23 @@ export function PreviewProvider({
         return {
           ...loan,
           currentDueDate,
-          updatedAt: new Date().toISOString(),
+          updatedAt: timestamp,
         };
       }),
     );
-  }, []);
+    setPayments((current) => [
+      {
+        id: `preview-reschedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        userId: "preview-user",
+        loanId,
+        type: "rescheduled",
+        amount: 0,
+        note: `From: ${formatDateForHistory(currentLoan.currentDueDate)}\nTo: ${formatDateForHistory(currentDueDate)}`,
+        createdAt: timestamp,
+      },
+      ...current,
+    ]);
+  }, [loans]);
 
   const value = useMemo<PreviewStoreValue>(
     () => ({
@@ -188,4 +254,49 @@ export function PreviewProvider({
 
 export function usePreviewStore() {
   return useContext(PreviewStoreContext);
+}
+
+function formatSettlementHistoryNote(
+  settlement: ReturnType<typeof calculateCloseLoanSettlement>,
+  note: string,
+) {
+  const lines = [
+    `Total settlement received: ${formatMoneyForHistory(settlement.amountReceived)}`,
+    `Principal returned: ${formatMoneyForHistory(settlement.principalReturn)}`,
+    `Final interest received: ${formatMoneyForHistory(settlement.finalInterestReceived)}`,
+    `Credit applied: ${formatMoneyForHistory(settlement.creditApplied)}`,
+  ];
+
+  if (settlement.overpayment > 0) {
+    lines.push(`Extra received: ${formatMoneyForHistory(settlement.overpayment)}`);
+  }
+
+  if (note) {
+    lines.push(`Note: ${note}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatMoneyForHistory(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(amount);
+}
+
+function formatDateForHistory(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }

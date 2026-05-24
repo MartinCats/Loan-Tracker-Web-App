@@ -1,6 +1,7 @@
 "use client";
 
-import { type FormEvent, useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useActionState, useEffect, useRef, useState } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
@@ -15,6 +16,7 @@ type RescheduleLoanSheetProps = {
   loanId: string;
   currentDueDate: string;
   disabled?: boolean;
+  onRescheduled?: (details: { nextDueDate: string }) => void;
   triggerVariant?: "button" | "card";
 };
 
@@ -22,24 +24,29 @@ export function RescheduleLoanSheet({
   loanId,
   currentDueDate,
   disabled,
+  onRescheduled,
   triggerVariant = "button",
 }: RescheduleLoanSheetProps) {
+  const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(currentDueDate);
   const [previewMessage, setPreviewMessage] = useState("");
   const [isPreviewPending, setIsPreviewPending] = useState(false);
+  const submittedDueDateRef = useRef(currentDueDate);
   const [state, formAction] = useActionState(rescheduleLoanAction, initialState);
 
   useEffect(() => {
     if (state.status === "success") {
       setIsOpen(false);
       showFeedback("Due date updated");
+      onRescheduled?.({ nextDueDate: submittedDueDateRef.current });
+      router.refresh();
     } else if (state.status === "error" && state.message) {
       showFeedback(state.message, "error");
     }
-  }, [showFeedback, state]);
+  }, [onRescheduled, router, showFeedback, state]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -48,6 +55,8 @@ export function RescheduleLoanSheet({
   }, [currentDueDate, isOpen]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    submittedDueDateRef.current = nextDueDate;
+
     if (!previewStore) {
       return;
     }
@@ -64,6 +73,7 @@ export function RescheduleLoanSheet({
       previewStore.rescheduleLoan(loanId, nextDueDate);
       setPreviewMessage("Preview mode: reschedule simulated.");
       showFeedback("Due date updated");
+      onRescheduled?.({ nextDueDate });
       setIsOpen(false);
       setIsPreviewPending(false);
     }, 120);

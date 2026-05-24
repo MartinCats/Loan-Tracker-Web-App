@@ -6,6 +6,8 @@ import { useFormStatus } from "react-dom";
 import { usePreviewStore } from "@/components/preview/preview-store";
 import { useActionFeedback } from "@/components/ui/action-feedback";
 import { closeLoanWithState, type LoanActionState } from "@/lib/loans/actions";
+import { calculateCloseLoanSettlement } from "@/lib/payments/calculator";
+import type { Loan } from "@/lib/types/loan";
 
 const initialState: LoanActionState = {
   status: "idle",
@@ -13,29 +15,38 @@ const initialState: LoanActionState = {
 };
 
 export function CloseLoanButton({
-  loanId,
+  loan,
   triggerVariant = "button",
 }: {
-  loanId: string;
+  loan: Loan;
   triggerVariant?: "button" | "card";
 }) {
   const router = useRouter();
   const previewStore = usePreviewStore();
   const { showFeedback } = useActionFeedback();
-  const [isConfirming, setIsConfirming] = useState(false);
+  const settlement = calculateCloseLoanSettlement(loan);
+  const [isOpen, setIsOpen] = useState(false);
+  const [amountReceived, setAmountReceived] = useState(String(settlement.totalPayoff));
   const [previewMessage, setPreviewMessage] = useState("");
+  const [previewStatus, setPreviewStatus] = useState<"idle" | "error" | "success">("idle");
   const [isPreviewPending, setIsPreviewPending] = useState(false);
   const [state, formAction] = useActionState(closeLoanWithState, initialState);
 
   useEffect(() => {
     if (state.status === "success") {
-      setIsConfirming(false);
+      setIsOpen(false);
       showFeedback("Loan moved to Archive");
-      router.replace(`/archive/${loanId}`);
+      router.replace(`/archive/${loan.id}`);
     } else if (state.status === "error" && state.message) {
       showFeedback(state.message, "error");
     }
-  }, [loanId, router, showFeedback, state]);
+  }, [loan.id, router, showFeedback, state]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setAmountReceived(String(settlement.totalPayoff));
+    }
+  }, [isOpen, settlement.totalPayoff]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (!previewStore) {
@@ -43,19 +54,39 @@ export function CloseLoanButton({
     }
 
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const received = Number(formData.get("amountReceived"));
+    const note = String(formData.get("note") ?? "").trim();
+
+    if (!Number.isFinite(received) || received < 0) {
+      setPreviewStatus("error");
+      setPreviewMessage("Preview mode: enter a valid settlement amount.");
+      return;
+    }
+
     setIsPreviewPending(true);
     window.setTimeout(() => {
-      previewStore.closeLoan(loanId);
+      const result = previewStore.closeLoan(loan.id, received, note || undefined);
+
+      if (result?.error) {
+        setPreviewStatus("error");
+        setPreviewMessage(result.error);
+        showFeedback(result.error, "error");
+        setIsPreviewPending(false);
+        return;
+      }
+
+      setPreviewStatus("success");
       setPreviewMessage("Preview mode: loan closed.");
       showFeedback("Loan moved to Archive");
-      setIsConfirming(false);
+      setIsOpen(false);
       setIsPreviewPending(false);
-      router.replace(`/archive/${loanId}`);
+      router.replace(`/archive/${loan.id}`);
     }, 120);
   }
 
-  if (!isConfirming) {
-    return (
+  return (
+    <>
       <div className="sheet-trigger-group">
         <button
           className={
@@ -65,7 +96,8 @@ export function CloseLoanButton({
           }
           onClick={() => {
             setPreviewMessage("");
-            setIsConfirming(true);
+            setPreviewStatus("idle");
+            setIsOpen(true);
           }}
           type="button"
         >
@@ -73,85 +105,141 @@ export function CloseLoanButton({
             <>
               <span aria-hidden="true" className="quick-action-card__icon">X</span>
               <strong>Close loan</strong>
-              <small>Move to archive</small>
+              <small>Final payoff</small>
             </>
           ) : (
             "Close loan"
           )}
         </button>
-        {previewMessage || state.message ? (
+        {!isOpen && (previewMessage || state.message) ? (
           <p
             className={
-              previewMessage || state.status === "success"
+              previewStatus === "success" || state.status === "success"
                 ? "auth-message is-success"
                 : "auth-message"
             }
-            role={state.status === "error" ? "alert" : "status"}
+            role={previewStatus === "error" || state.status === "error" ? "alert" : "status"}
           >
             {previewMessage || state.message}
           </p>
         ) : null}
       </div>
-    );
-  }
 
-  return (
-    <div className="sheet-backdrop" role="presentation">
-      <section
-        aria-label="Close loan confirmation"
-        aria-modal="true"
-        className="sheet sheet--compact"
-        role="dialog"
-      >
-        <div className="section-heading">
-          <div>
-            <h2>Close loan?</h2>
-            <p>This moves the loan to Archive. Payment history will be preserved.</p>
-          </div>
-          <button
-            aria-label="Close confirmation"
-            className="icon-button"
-            onClick={() => setIsConfirming(false)}
-            type="button"
+      {isOpen ? (
+        <div className="sheet-backdrop" role="presentation">
+          <section
+            aria-label="Close loan settlement"
+            aria-modal="true"
+            className="sheet sheet--compact"
+            role="dialog"
           >
-            x
-          </button>
+            <div className="section-heading">
+              <div>
+                <h2>Close loan</h2>
+                <p>Record the final payoff, then move this loan to Archive.</p>
+              </div>
+              <button
+                aria-label="Close settlement sheet"
+                className="icon-button"
+                onClick={() => setIsOpen(false)}
+                type="button"
+              >
+                x
+              </button>
+            </div>
+
+            <form
+              action={previewStore ? undefined : formAction}
+              className="auth-form auth-form--compact"
+              onSubmit={handleSubmit}
+            >
+              <input name="loanId" type="hidden" value={loan.id} />
+
+              <div className="settlement-summary" aria-label="Settlement summary">
+                <div>
+                  <span>Principal return</span>
+                  <strong>{formatMoney(settlement.principalReturn)}</strong>
+                </div>
+                <div>
+                  <span>Final due</span>
+                  <strong>{formatMoney(settlement.grossDue)}</strong>
+                </div>
+                <div>
+                  <span>Credit applied</span>
+                  <strong>-{formatMoney(settlement.creditApplied)}</strong>
+                </div>
+                <div className="settlement-summary__total">
+                  <span>Total to collect</span>
+                  <strong>{formatMoney(settlement.totalPayoff)}</strong>
+                </div>
+              </div>
+
+              <label className="field">
+                <span>Amount received</span>
+                <input
+                  inputMode="decimal"
+                  min="0"
+                  name="amountReceived"
+                  onChange={(event) => setAmountReceived(event.target.value)}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={amountReceived}
+                />
+                <small>
+                  Principal is not counted as profit. Credit is applied to final
+                  interest first.
+                </small>
+              </label>
+
+              <label className="field">
+                <span>Note</span>
+                <input
+                  autoComplete="off"
+                  name="note"
+                  placeholder="Optional"
+                  type="text"
+                />
+                <small>Optional closure context for the activity feed.</small>
+              </label>
+
+              {previewMessage || state.message ? (
+                <p
+                  className={
+                    previewStatus === "success" || state.status === "success"
+                      ? "auth-message is-success"
+                      : "auth-message"
+                  }
+                  role={previewStatus === "error" || state.status === "error" ? "alert" : "status"}
+                >
+                  {previewMessage || state.message}
+                </p>
+              ) : null}
+
+              <div className="sheet-actions">
+                <button
+                  className="form-button form-button--secondary"
+                  onClick={() => setIsOpen(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <CloseSubmitButton forcePending={isPreviewPending} />
+              </div>
+            </form>
+          </section>
         </div>
-
-        <form
-          action={previewStore ? undefined : formAction}
-          className="auth-form auth-form--compact"
-          onSubmit={handleSubmit}
-        >
-          <input name="loanId" type="hidden" value={loanId} />
-
-          {previewMessage || state.message ? (
-            <p
-              className={
-                previewMessage || state.status === "success"
-                  ? "auth-message is-success"
-                  : "auth-message"
-              }
-              role={state.status === "error" ? "alert" : "status"}
-            >
-              {previewMessage || state.message}
-            </p>
-          ) : null}
-
-          <div className="sheet-actions">
-            <button
-              className="form-button form-button--secondary"
-              onClick={() => setIsConfirming(false)}
-              type="button"
-            >
-              Cancel
-            </button>
-            <CloseSubmitButton forcePending={isPreviewPending} />
-          </div>
-        </form>
-      </section>
-    </div>
+      ) : null}
+    </>
   );
+}
+
+function formatMoney(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function CloseSubmitButton({ forcePending = false }: { forcePending?: boolean }) {

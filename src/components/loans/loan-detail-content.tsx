@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { CloseLoanButton } from "@/components/loans/close-loan-button";
 import { DeleteLoanButton } from "@/components/loans/delete-loan-button";
@@ -43,6 +43,7 @@ export function LoanDetailContent({
 }: LoanDetailContentProps) {
   const previewStore = usePreviewStore();
   const [isCycleUpdated, setIsCycleUpdated] = useState(false);
+  const dueStatusRef = useRef<HTMLElement | null>(null);
   const activeLoanId = initialLoan?.id ?? loanId;
   const loan =
     previewStore?.loans.find((item) => item.id === activeLoanId) ?? initialLoan;
@@ -74,14 +75,30 @@ export function LoanDetailContent({
   const paymentCycle = formatPaymentCycle(loan.paymentCycle);
   const dueLabel = formatDueLabel(loan.currentDueDate, todayDate);
   const closedDate = getClosedDate(loan, visiblePayments);
+  const emphasizeDueStatus = useCallback((options: { shouldScroll?: boolean } = {}) => {
+    setIsCycleUpdated(true);
+
+    if (options.shouldScroll) {
+      window.requestAnimationFrame(() => {
+        dueStatusRef.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+      });
+    }
+
+    window.setTimeout(() => setIsCycleUpdated(false), 1100);
+  }, []);
   const handlePaymentRecorded = useCallback((details: { nextDueDate?: string }) => {
     if (!details.nextDueDate) {
       return;
     }
 
-    setIsCycleUpdated(true);
-    window.setTimeout(() => setIsCycleUpdated(false), 1600);
-  }, []);
+    emphasizeDueStatus();
+  }, [emphasizeDueStatus]);
+  const handleRescheduled = useCallback(() => {
+    emphasizeDueStatus({ shouldScroll: true });
+  }, [emphasizeDueStatus]);
 
   if (isClosed) {
     return (
@@ -196,6 +213,7 @@ export function LoanDetailContent({
 
       <section
         className={`loan-detail-status${isCycleUpdated ? " is-updated" : ""}`}
+        ref={dueStatusRef}
       >
         <LoanStatusPill loan={loan} todayDate={todayDate} />
         <span>{dueLabel}</span>
@@ -297,9 +315,10 @@ export function LoanDetailContent({
           <RescheduleLoanSheet
             loanId={loan.id}
             currentDueDate={loan.currentDueDate}
+            onRescheduled={handleRescheduled}
             triggerVariant="card"
           />
-          <CloseLoanButton loanId={loan.id} triggerVariant="card" />
+          <CloseLoanButton loan={loan} triggerVariant="card" />
         </div>
       </section>
 

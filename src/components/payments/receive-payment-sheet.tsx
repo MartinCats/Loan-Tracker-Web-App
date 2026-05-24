@@ -59,7 +59,14 @@ export function ReceivePaymentSheet({
     } else if (state.status === "error" && state.message) {
       showFeedback(state.message, "error");
     }
-  }, [onPaymentRecorded, router, showFeedback, state]);
+  }, [
+    onPaymentRecorded,
+    router,
+    showFeedback,
+    state.message,
+    state.nextDueDate,
+    state.status,
+  ]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (!previewStore) {

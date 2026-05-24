@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { CreateLoanInput, LoanInsert } from "@/lib/loans/types";
@@ -123,6 +124,16 @@ function revalidateLoanViews() {
   revalidatePath("/dashboard");
   revalidatePath("/loans");
   revalidatePath("/archive");
+}
+
+function getSafePostDeleteHref(formData: FormData) {
+  const href = String(formData.get("afterDeleteHref") ?? "").trim();
+
+  if (href === "/archive" || href === "/loans" || href === "/dashboard") {
+    return href;
+  }
+
+  return "/dashboard";
 }
 
 export async function createLoanAction(
@@ -329,6 +340,8 @@ export async function closeLoanWithState(
   revalidatePath(`/loans/${loanId}`);
   revalidatePath(`/archive/${loanId}`);
 
+  redirect(`/archive/${loanId}?feedback=loan-moved`);
+
   return { status: "success", message: "Loan closed." };
 }
 
@@ -383,6 +396,8 @@ export async function deleteLoanWithState(
   revalidateLoanViews();
   revalidatePath(`/loans/${loanId}`);
   revalidatePath(`/archive/${loanId}`);
+
+  redirect(`${getSafePostDeleteHref(formData)}?feedback=loan-deleted`);
 
   return { status: "success", message: "Loan deleted." };
 }

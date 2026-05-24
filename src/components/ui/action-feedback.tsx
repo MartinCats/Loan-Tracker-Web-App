@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -51,6 +52,7 @@ export function ActionFeedbackProvider({
   return (
     <ActionFeedbackContext.Provider value={value}>
       {children}
+      <RouteFeedbackBridge showFeedback={showFeedback} />
       {feedback ? (
         <div
           className={`action-feedback action-feedback--${feedback.tone}`}
@@ -63,6 +65,38 @@ export function ActionFeedbackProvider({
       ) : null}
     </ActionFeedbackContext.Provider>
   );
+}
+
+function RouteFeedbackBridge({
+  showFeedback,
+}: {
+  showFeedback: (message: string, tone?: FeedbackTone) => void;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const feedback = searchParams.get("feedback");
+
+  useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+
+    if (feedback === "loan-moved") {
+      showFeedback("Loan moved to Archive");
+    } else if (feedback === "loan-deleted") {
+      showFeedback("Loan deleted");
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("feedback");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+      scroll: false,
+    });
+  }, [feedback, pathname, router, searchParams, showFeedback]);
+
+  return null;
 }
 
 export function useActionFeedback() {

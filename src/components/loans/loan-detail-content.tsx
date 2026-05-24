@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { DueDateLabel } from "@/components/loans/due-date-label";
 import { CloseLoanButton } from "@/components/loans/close-loan-button";
 import { DeleteLoanButton } from "@/components/loans/delete-loan-button";
@@ -74,14 +74,14 @@ export function LoanDetailContent({
   const paymentCycle = formatPaymentCycle(loan.paymentCycle);
   const dueLabel = formatDueLabel(loan.currentDueDate, todayDate);
   const closedDate = getClosedDate(loan, visiblePayments);
-  function handlePaymentRecorded(details: { nextDueDate?: string }) {
+  const handlePaymentRecorded = useCallback((details: { nextDueDate?: string }) => {
     if (!details.nextDueDate) {
       return;
     }
 
     setIsCycleUpdated(true);
     window.setTimeout(() => setIsCycleUpdated(false), 1600);
-  }
+  }, []);
 
   if (isClosed) {
     return (

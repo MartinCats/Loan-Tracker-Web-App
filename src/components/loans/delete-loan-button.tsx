@@ -128,6 +128,11 @@ export function DeleteLoanButton({
               onSubmit={handleSubmit}
             >
               <input name="loanId" type="hidden" value={loanId} />
+              <input
+                name="afterDeleteHref"
+                type="hidden"
+                value={afterDeleteHref ?? "/dashboard"}
+              />
 
               {previewMessage || state.message ? (
                 <p

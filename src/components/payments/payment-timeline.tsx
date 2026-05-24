@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { PaymentHistory } from "@/lib/types/loan";
 
 const money = new Intl.NumberFormat("en-US", {
@@ -61,8 +64,13 @@ type PaymentTimelineProps = {
 };
 
 export function PaymentTimeline({ payments }: PaymentTimelineProps) {
+  const [hasMounted, setHasMounted] = useState(false);
   const events = payments.map((payment) => payment as ActivityEvent);
-  const groups = groupEventsByMonth(events);
+  const groups = groupEventsByMonth(events, hasMounted);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   if (payments.length === 0) {
     return (
@@ -80,7 +88,11 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
           <h3>{group.label}</h3>
           <div className="timeline-group__items">
             {group.events.map((event) => (
-              <TimelineEventItem event={event} key={event.id} />
+              <TimelineEventItem
+                event={event}
+                key={event.id}
+                useRelativeTime={hasMounted}
+              />
             ))}
           </div>
         </section>
@@ -89,7 +101,13 @@ export function PaymentTimeline({ payments }: PaymentTimelineProps) {
   );
 }
 
-function TimelineEventItem({ event }: { event: ActivityEvent }) {
+function TimelineEventItem({
+  event,
+  useRelativeTime,
+}: {
+  event: ActivityEvent;
+  useRelativeTime: boolean;
+}) {
   const presentation = eventPresentation[event.type];
 
   return (
@@ -98,7 +116,7 @@ function TimelineEventItem({ event }: { event: ActivityEvent }) {
         <h4>{presentation.label}</h4>
         <p>{event.note || presentation.description}</p>
         <time dateTime={event.createdAt}>
-          {formatActivityTimestamp(event.createdAt)}
+          {formatActivityTimestamp(event.createdAt, useRelativeTime)}
         </time>
       </div>
       <strong>{money.format(event.amount)}</strong>
@@ -106,13 +124,13 @@ function TimelineEventItem({ event }: { event: ActivityEvent }) {
   );
 }
 
-function groupEventsByMonth(events: ActivityEvent[]) {
+function groupEventsByMonth(events: ActivityEvent[], useLocalTime: boolean) {
   const groups = new Map<string, ActivityEvent[]>();
 
   for (const event of [...events].sort(
     (a, b) => getTime(b.createdAt) - getTime(a.createdAt),
   )) {
-    const label = formatMonthGroup(event.createdAt);
+    const label = formatMonthGroup(event.createdAt, useLocalTime);
     groups.set(label, [...(groups.get(label) ?? []), event]);
   }
 
@@ -122,50 +140,56 @@ function groupEventsByMonth(events: ActivityEvent[]) {
   }));
 }
 
-function formatMonthGroup(value: string) {
+function formatMonthGroup(value: string, useLocalTime: boolean) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "Undated";
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     month: "long",
+    timeZone: useLocalTime ? undefined : "UTC",
     year: "numeric",
   }).format(date);
 }
 
-function formatActivityTimestamp(value: string) {
+function formatActivityTimestamp(value: string, useRelativeTime: boolean) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  const now = new Date();
-  const today = startOfLocalDay(now);
-  const targetDay = startOfLocalDay(date);
-  const dayDifference = Math.round(
-    (today.getTime() - targetDay.getTime()) / 86_400_000,
-  );
-  const time = new Intl.DateTimeFormat(undefined, {
+  const time = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: useRelativeTime ? undefined : "UTC",
   }).format(date);
 
-  if (dayDifference === 0) {
-    return `Today • ${time}`;
+  if (useRelativeTime) {
+    const now = new Date();
+    const today = startOfLocalDay(now);
+    const targetDay = startOfLocalDay(date);
+    const dayDifference = Math.round(
+      (today.getTime() - targetDay.getTime()) / 86_400_000,
+    );
+
+    if (dayDifference === 0) {
+      return `Today \u2022 ${time}`;
+    }
+
+    if (dayDifference === 1) {
+      return `Yesterday \u2022 ${time}`;
+    }
   }
 
-  if (dayDifference === 1) {
-    return `Yesterday • ${time}`;
-  }
-
-  return `${new Intl.DateTimeFormat(undefined, {
+  return `${new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
+    timeZone: useRelativeTime ? undefined : "UTC",
     year: "numeric",
-  }).format(date)} • ${time}`;
+  }).format(date)} \u2022 ${time}`;
 }
 
 function getTime(value: string) {

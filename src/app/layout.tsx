@@ -39,8 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" style={{ backgroundColor: "#121922", colorScheme: "dark" }}>
+      <body style={{ backgroundColor: "#121922" }}>
         <I18nProvider>
           <ViewportStabilizer />
           {children}

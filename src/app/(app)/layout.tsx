@@ -1,11 +1,25 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { AppLoadingScreen } from "@/components/app/app-loading-screen";
 import { AppShell } from "@/components/app/app-shell";
 import { isPreviewMode } from "@/lib/preview";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProtectedAppLayout({
+export default function ProtectedAppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <Suspense fallback={<AppLoadingScreen />}>
+      <ProtectedAppShell>{children}</ProtectedAppShell>
+    </Suspense>
+  );
+}
+
+async function ProtectedAppShell({
   children,
 }: Readonly<{
   children: React.ReactNode;

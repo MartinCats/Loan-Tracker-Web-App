@@ -55,6 +55,7 @@
 
 html,
 body {
+  background-color: #121922;
   background: var(--color-paper-2);
   min-height: 100%;
   min-height: 100svh;
@@ -67,6 +68,7 @@ body {
 
 body {
   margin: 0;
+  background-color: #121922;
   background:
     linear-gradient(180deg, var(--color-canvas-top) 0%, var(--color-paper) 34%, var(--color-canvas-bottom) 100%),
     var(--color-paper-2);
@@ -227,12 +229,12 @@ a,
 }
 
 .content-shell > * {
-  animation: page-enter 140ms var(--ease-out) both;
+  animation: page-enter 90ms var(--ease-out) both;
 }
 
 @keyframes page-enter {
   from {
-    opacity: 0.9;
+    opacity: 0.98;
   }
 
   to {
@@ -580,6 +582,46 @@ a,
     var(--color-paper-3),
     var(--color-paper)
   );
+}
+
+.app-loading-screen {
+  pointer-events: none;
+}
+
+.app-loading-screen .content-shell > * {
+  animation: none;
+}
+
+.app-loading-panel {
+  min-height: 13rem;
+}
+
+.app-loading-line {
+  display: block;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-rule) 58%, transparent);
+}
+
+.app-loading-line--title {
+  width: 8rem;
+  height: 1rem;
+}
+
+.app-loading-line--text {
+  width: 12rem;
+  max-width: 64vw;
+  height: 0.75rem;
+  margin-top: var(--space-xs);
+  opacity: 0.72;
+}
+
+.app-loading-action {
+  display: inline-flex;
+  width: fit-content;
+}
+
+.app-loading-bottom-nav .bottom-nav__item {
+  cursor: default;
 }
 
 .metric-card span,

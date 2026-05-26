@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getActiveOrDefaultLenderProfile } from "@/lib/lender-profiles/default-profile";
 import { createClient } from "@/lib/supabase/server";
 import { calculateDashboardMetrics } from "@/lib/loans/metrics";
 import { mapLoanRow, type LoanDashboardResult, type LoanListResult, type LoanRow } from "@/lib/loans/types";
@@ -34,12 +35,23 @@ export async function getLoans(status?: LoanStatus): Promise<LoanListResult> {
     };
   }
 
-  const { supabase } = await getAuthenticatedSupabase();
+  const { supabase, user } = await getAuthenticatedSupabase();
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(supabase, user);
+
+  if (profileError || !profile) {
+    return {
+      loans: [],
+      error: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   let query = supabase
     .from("loans")
     .select(
-      "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
+      "id,user_id,lender_profile_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
     )
+    .eq("lender_profile_id", profile.id)
     .order("current_due_date", { ascending: true });
 
   if (status) {

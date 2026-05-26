@@ -28,7 +28,9 @@ To test from a phone on the same Wi-Fi network, start Next bound to all network 
 
 ```bash
 npm run dev:lan
+npm run dev -- --hostname 0.0.0.0
 ```
+ipconfig getifaddr en0
 
 Then open:
 

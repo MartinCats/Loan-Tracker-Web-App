@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { getActiveOrDefaultLenderProfile } from "@/lib/lender-profiles/default-profile";
 import { mapLoanRow, type LoanRow } from "@/lib/loans/types";
 import { calculatePayment } from "@/lib/payments/calculator";
 import { isPreviewMode } from "@/lib/preview";
@@ -104,13 +105,24 @@ export async function receivePaymentAction(
     return { status: "error", message: auth.error };
   }
 
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   const { data, error: loanError } = await auth.supabase
     .from("loans")
     .select(
-      "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
+      "id,user_id,lender_profile_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
     )
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .maybeSingle();
 
   if (loanError) {
@@ -159,6 +171,7 @@ export async function receivePaymentAction(
     })
     .eq("id", loan.id)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .eq("status", "active");
 
   if (updateError) {

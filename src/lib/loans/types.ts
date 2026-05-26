@@ -3,6 +3,7 @@ import type { DashboardMetrics, Loan, LoanStatus, PaymentCycle } from "@/lib/typ
 export type LoanRow = {
   id: string;
   user_id: string;
+  lender_profile_id: string;
   borrower_name: string;
   principal: number | string;
   interest_rate: number | string;
@@ -18,6 +19,7 @@ export type LoanRow = {
 
 export type LoanInsert = {
   user_id: string;
+  lender_profile_id: string;
   borrower_name: string;
   principal: number;
   interest_rate: number;

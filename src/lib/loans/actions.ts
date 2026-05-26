@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format/money";
+import { getActiveOrDefaultLenderProfile } from "@/lib/lender-profiles/default-profile";
 import { mapLoanRow, type CreateLoanInput, type LoanInsert, type LoanRow } from "@/lib/loans/types";
 import { paymentCycleOptions } from "@/lib/loans/payment-cycle";
 import { calculateCloseLoanSettlement } from "@/lib/payments/calculator";
@@ -186,8 +187,19 @@ export async function createLoanAction(
     return { status: "error", message: auth.error };
   }
 
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   const row: LoanInsert = {
     user_id: auth.user.id,
+    lender_profile_id: profile.id,
     borrower_name: parsed.input.borrowerName,
     principal: parsed.input.principal,
     interest_rate: parsed.input.interestRate,
@@ -244,15 +256,32 @@ export async function archiveLoanWithState(
     return { status: "error", message: auth.error };
   }
 
-  const { error: updateError } = await auth.supabase
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
+  const { data: archivedLoan, error: updateError } = await auth.supabase
     .from("loans")
     .update({ status: "closed" })
     .eq("id", loanId)
     .eq("user_id", auth.user.id)
-    .eq("status", "active");
+    .eq("lender_profile_id", profile.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
 
   if (updateError) {
     return { status: "error", message: updateError.message };
+  }
+
+  if (!archivedLoan) {
+    return { status: "error", message: "Only active loans can be archived." };
   }
 
   const { error: historyError } = await auth.supabase.from("payment_histories").insert({
@@ -297,11 +326,22 @@ export async function rescheduleLoanAction(
     return { status: "error", message: auth.error };
   }
 
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   const { data: loanData, error: loanError } = await auth.supabase
     .from("loans")
     .select("id,current_due_date")
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .eq("status", "active")
     .maybeSingle();
 
@@ -321,6 +361,7 @@ export async function rescheduleLoanAction(
     .update({ current_due_date: parsed.input.currentDueDate })
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .eq("status", "active");
 
   if (error) {
@@ -368,13 +409,24 @@ export async function closeLoanWithState(
     return { status: "error", message: auth.error };
   }
 
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   const { data: loanData, error: loanError } = await auth.supabase
     .from("loans")
     .select(
-      "id,user_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
+      "id,user_id,lender_profile_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at",
     )
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .eq("status", "active")
     .maybeSingle();
 
@@ -409,6 +461,7 @@ export async function closeLoanWithState(
     })
     .eq("id", parsed.input.loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .eq("status", "active");
 
   if (updateError) {
@@ -496,11 +549,22 @@ export async function deleteLoanWithState(
     return { status: "error", message: auth.error };
   }
 
+  const { profile, error: profileError } =
+    await getActiveOrDefaultLenderProfile(auth.supabase, auth.user);
+
+  if (profileError || !profile) {
+    return {
+      status: "error",
+      message: profileError ?? "Could not load lender profile.",
+    };
+  }
+
   const { data: loan, error: findError } = await auth.supabase
     .from("loans")
     .select("id")
     .eq("id", loanId)
     .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id)
     .maybeSingle();
 
   if (findError) {
@@ -515,7 +579,8 @@ export async function deleteLoanWithState(
     .from("loans")
     .delete()
     .eq("id", loanId)
-    .eq("user_id", auth.user.id);
+    .eq("user_id", auth.user.id)
+    .eq("lender_profile_id", profile.id);
 
   if (deleteError) {
     return { status: "error", message: deleteError.message };

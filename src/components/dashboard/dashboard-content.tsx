@@ -12,9 +12,11 @@ import {
   getDaysUntilDue,
   getUrgencyRank,
 } from "@/lib/loans/urgency";
+import type { LenderProfile } from "@/lib/lender-profiles/types";
 import type { DashboardMetrics, Loan } from "@/lib/types/loan";
 
 type DashboardContentProps = {
+  activeLenderProfile?: LenderProfile | null;
   error?: string;
   initialLoans: Loan[];
   initialMetrics: DashboardMetrics;
@@ -22,6 +24,7 @@ type DashboardContentProps = {
 };
 
 export function DashboardContent({
+  activeLenderProfile,
   error,
   initialLoans,
   initialMetrics,
@@ -100,9 +103,15 @@ export function DashboardContent({
             <p>{error}</p>
           </div>
         ) : activeLoans.length === 0 ? (
-          <div className="empty-state">
-            <h3>{t("dashboard.noActiveLoans")}</h3>
-            <p>{t("dashboard.noActiveLoansDescription")}</p>
+          <div className="empty-state dashboard-empty-state" data-profile-theme={activeLenderProfile?.themeColor ?? "green"}>
+            {activeLenderProfile ? (
+              <div className="empty-profile-identity">
+                <span aria-hidden="true">{activeLenderProfile.avatarEmoji}</span>
+                <strong>{activeLenderProfile.name}</strong>
+              </div>
+            ) : null}
+            <h3>ยังไม่มีเงินกู้ในโปรไฟล์นี้</h3>
+            <p>สร้างเงินกู้รายการแรกสำหรับโปรไฟล์นี้ แล้วแดชบอร์ด สรุปยอด และกำหนดชำระจะเริ่มแสดงแยกเฉพาะสมุดนี้</p>
             <div className="empty-state__action">
               <CreateLoanSheet />
             </div>

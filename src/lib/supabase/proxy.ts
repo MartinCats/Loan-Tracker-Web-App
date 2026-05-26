@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPreviewMode } from "@/lib/preview";
 
-const protectedRoutes = ["/dashboard", "/loans", "/archive", "/settings"];
+const protectedRoutes = ["/dashboard", "/loans", "/archive", "/settings", "/profiles"];
 const authRoutes = ["/auth/sign-in", "/auth/sign-up"];
 
 function isSupabaseConfigured() {

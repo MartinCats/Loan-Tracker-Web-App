@@ -108,6 +108,16 @@ function parseProfileId(formData: FormData) {
   return String(formData.get("profileId") ?? "").trim();
 }
 
+function getSafeProfileReturnPath(formData: FormData) {
+  const returnTo = String(formData.get("returnTo") ?? "").trim();
+
+  if (returnTo === "/profiles/manage" || returnTo === "/profiles") {
+    return returnTo;
+  }
+
+  return "/profiles";
+}
+
 function revalidateProfileViews() {
   revalidatePath("/dashboard");
   revalidatePath("/loans");
@@ -277,26 +287,28 @@ export async function updateLenderProfileAction(
 }
 
 export async function updateLenderProfileFormAction(formData: FormData) {
+  const returnTo = getSafeProfileReturnPath(formData);
+
   if (isPreviewMode()) {
-    redirect("/profiles");
+    redirect(returnTo);
   }
 
   const profileId = parseProfileId(formData);
 
   if (!profileId) {
-    redirect("/profiles?error=Lender%20profile%20is%20missing.");
+    redirect(`${returnTo}?error=Lender%20profile%20is%20missing.`);
   }
 
   const parsed = parseProfileName(formData);
 
   if (!parsed.ok) {
-    redirect(`/profiles?error=${encodeURIComponent(parsed.message)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(parsed.message)}`);
   }
 
   const auth = await getAuthenticatedSupabase();
 
   if ("error" in auth) {
-    redirect(`/profiles?error=${encodeURIComponent(auth.error)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(auth.error)}`);
   }
 
   const { error } = await auth.supabase
@@ -310,11 +322,11 @@ export async function updateLenderProfileFormAction(formData: FormData) {
     .eq("user_id", auth.user.id);
 
   if (error) {
-    redirect(`/profiles?error=${encodeURIComponent(error.message)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidateProfileViews();
-  redirect("/profiles");
+  redirect(returnTo);
 }
 
 export async function deleteLenderProfileAction(
@@ -382,20 +394,22 @@ export async function deleteLenderProfileAction(
 }
 
 export async function deleteLenderProfileFormAction(formData: FormData) {
+  const returnTo = getSafeProfileReturnPath(formData);
+
   if (isPreviewMode()) {
-    redirect("/profiles");
+    redirect(returnTo);
   }
 
   const profileId = parseProfileId(formData);
 
   if (!profileId) {
-    redirect("/profiles?error=Lender%20profile%20is%20missing.");
+    redirect(`${returnTo}?error=Lender%20profile%20is%20missing.`);
   }
 
   const auth = await getAuthenticatedSupabase();
 
   if ("error" in auth) {
-    redirect(`/profiles?error=${encodeURIComponent(auth.error)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(auth.error)}`);
   }
 
   const { count, error: countError } = await auth.supabase
@@ -404,12 +418,12 @@ export async function deleteLenderProfileFormAction(formData: FormData) {
     .eq("user_id", auth.user.id);
 
   if (countError) {
-    redirect(`/profiles?error=${encodeURIComponent(countError.message)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(countError.message)}`);
   }
 
   if (!canDeleteProfile(count ?? 0)) {
     redirect(
-      "/profiles?error=Create%20another%20lender%20profile%20before%20deleting%20this%20one.",
+      `${returnTo}?error=Create%20another%20lender%20profile%20before%20deleting%20this%20one.`,
     );
   }
 
@@ -426,7 +440,7 @@ export async function deleteLenderProfileFormAction(formData: FormData) {
     .eq("user_id", auth.user.id);
 
   if (error) {
-    redirect(`/profiles?error=${encodeURIComponent(error.message)}`);
+    redirect(`${returnTo}?error=${encodeURIComponent(error.message)}`);
   }
 
   if (shouldResetActiveProfile) {
@@ -434,5 +448,5 @@ export async function deleteLenderProfileFormAction(formData: FormData) {
   }
 
   revalidateProfileViews();
-  redirect("/profiles");
+  redirect(shouldResetActiveProfile ? "/profiles" : returnTo);
 }

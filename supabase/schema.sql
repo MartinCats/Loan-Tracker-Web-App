@@ -2,7 +2,7 @@ create table if not exists public.lender_profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
-  avatar_emoji text not null default '🧑',
+  avatar_emoji text not null default '👦🏻',
   theme_color text not null default 'green',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -49,15 +49,16 @@ alter table public.loans
 add column if not exists lender_profile_id uuid references public.lender_profiles(id) on delete cascade;
 
 alter table public.lender_profiles
-add column if not exists avatar_emoji text not null default '🧑';
+add column if not exists avatar_emoji text not null default '👦🏻';
 
 alter table public.lender_profiles
 add column if not exists theme_color text not null default 'green';
 
 update public.lender_profiles
-set avatar_emoji = '🧑'
+set avatar_emoji = '👦🏻'
 where avatar_emoji is null
-  or length(trim(avatar_emoji)) = 0;
+  or length(trim(avatar_emoji)) = 0
+  or avatar_emoji in ('🧑', '👱', '👨🏻');
 
 update public.lender_profiles
 set theme_color = 'green'
@@ -97,13 +98,17 @@ end;
 $$;
 
 insert into public.lender_profiles (user_id, name)
-select auth_user.id, 'Default lender profile'
+select auth_user.id, 'เรา'
 from auth.users as auth_user
 where not exists (
   select 1
   from public.lender_profiles
   where lender_profiles.user_id = auth_user.id
 );
+
+update public.lender_profiles
+set name = 'เรา'
+where name in ('Default lender profile', 'โปรไฟล์หลัก');
 
 update public.loans
 set lender_profile_id = lender_profiles.id

@@ -1,6 +1,19 @@
 import type { LenderProfileThemeColor } from "@/lib/lender-profiles/types";
 
-export const lenderProfileAvatarOptions = ["🧑", "👩", "👨", "👵", "👴", "💼", "🏦", "🌱"] as const;
+export const lenderProfileAvatarOptions = [
+  "👦🏻",
+  "👧🏻",
+  "👨🏻",
+  "👩🏻",
+  "👴🏻",
+  "👵🏻",
+  "🐶",
+  "🐱",
+  "🐰",
+  "🐻",
+  "🦊",
+  "🐼",
+] as const;
 
 export const lenderProfileThemeColors = [
   "green",
@@ -9,27 +22,27 @@ export const lenderProfileThemeColors = [
   "rose",
 ] as const satisfies readonly LenderProfileThemeColor[];
 
-export const defaultLenderProfileAvatar = "🧑";
+export const defaultLenderProfileAvatar = "👦🏻";
 export const defaultLenderProfileThemeColor: LenderProfileThemeColor = "green";
 
 export const suggestedLenderProfilePresets = [
   {
-    name: "แม่ปล่อยกู้",
-    avatarEmoji: "👩",
+    labelKey: "profiles.preset.mom",
+    avatarEmoji: "👩🏻",
     themeColor: "rose",
   },
   {
-    name: "พ่อปล่อยกู้",
-    avatarEmoji: "👨",
+    labelKey: "profiles.preset.dad",
+    avatarEmoji: "👨🏻",
     themeColor: "blue",
   },
   {
-    name: "เราปล่อยกู้",
-    avatarEmoji: "🧑",
+    labelKey: "profiles.preset.me",
+    avatarEmoji: "👦🏻",
     themeColor: "green",
   },
 ] as const satisfies readonly {
-  name: string;
+  labelKey: string;
   avatarEmoji: string;
   themeColor: LenderProfileThemeColor;
 }[];

@@ -11,7 +11,7 @@ import {
   type LenderProfileRow,
 } from "@/lib/lender-profiles/types";
 
-const defaultProfileName = "โปรไฟล์หลัก";
+const defaultProfileName = "เรา";
 
 export async function getOrCreateDefaultLenderProfile(
   supabase: SupabaseClient,

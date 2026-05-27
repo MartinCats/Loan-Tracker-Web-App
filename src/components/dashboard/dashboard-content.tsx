@@ -110,8 +110,8 @@ export function DashboardContent({
                 <strong>{activeLenderProfile.name}</strong>
               </div>
             ) : null}
-            <h3>ยังไม่มีเงินกู้ในโปรไฟล์นี้</h3>
-            <p>สร้างเงินกู้รายการแรกสำหรับโปรไฟล์นี้ แล้วแดชบอร์ด สรุปยอด และกำหนดชำระจะเริ่มแสดงแยกเฉพาะสมุดนี้</p>
+            <h3>{t("profiles.dashboardEmptyTitle")}</h3>
+            <p>{t("profiles.dashboardEmptyDescription")}</p>
             <div className="empty-state__action">
               <CreateLoanSheet />
             </div>

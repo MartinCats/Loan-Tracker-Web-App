@@ -1,16 +1,18 @@
 import { redirect } from "next/navigation";
-import { ProfileSelectionContent } from "@/components/profiles/profile-selection-content";
+import { ProfileManageContent } from "@/components/profiles/profile-manage-content";
 import { getActiveOrDefaultLenderProfile } from "@/lib/lender-profiles/default-profile";
 import { mapLenderProfileRow, type LenderProfileRow } from "@/lib/lender-profiles/types";
 import { createClient } from "@/lib/supabase/server";
 
-type ProfilesPageProps = {
+type ManageProfilesPageProps = {
   searchParams: Promise<{
     error?: string;
   }>;
 };
 
-export default async function ProfilesPage({ searchParams }: ProfilesPageProps) {
+export default async function ManageProfilesPage({
+  searchParams,
+}: ManageProfilesPageProps) {
   const supabase = await createClient();
 
   if (!supabase) {
@@ -26,9 +28,10 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
     redirect("/auth/sign-in");
   }
 
-  const { profile: activeProfile, error: activeProfileError } =
-    await getActiveOrDefaultLenderProfile(supabase, user);
-
+  const { error: activeProfileError } = await getActiveOrDefaultLenderProfile(
+    supabase,
+    user,
+  );
   const { data, error } = await supabase
     .from("lender_profiles")
     .select("id,user_id,name,avatar_emoji,theme_color,created_at,updated_at")
@@ -42,8 +45,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
   const { error: actionError } = await searchParams;
 
   return (
-    <ProfileSelectionContent
-      activeProfile={activeProfile}
+    <ProfileManageContent
       error={actionError ?? activeProfileError ?? error?.message}
       profiles={profiles}
     />

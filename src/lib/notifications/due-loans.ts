@@ -10,6 +10,7 @@ export type DueLoanReminder = {
   };
   borrowerName: string;
   amountDue: number;
+  principalAmount: number;
   dueDate: string;
 };
 
@@ -44,12 +45,13 @@ export function formatDueLoanReminderMessages(
   group: DueLoanReminderGroup,
 ): string[] {
   const title = `${group.lenderProfile.avatarEmoji} ${group.lenderProfile.name}`;
-  const header = `${title}\nLoan payments due today`;
+  const header = `${title}\n\n🔔 วันนี้ครบกำหนด ${group.loans.length} รายการ`;
   const messages: string[] = [];
   let currentMessage = header;
 
-  for (const loan of group.loans) {
-    const line = `\n• ${loan.borrowerName}: ${formatMoney(loan.amountDue)} due ${formatDueDate(loan.dueDate)}`;
+  for (const [index, loan] of group.loans.entries()) {
+    const itemHeader = group.loans.length > 1 ? `\n\nรายการที่ ${index + 1}` : "";
+    const line = `${itemHeader}\n\n👤 ลูกหนี้: ${loan.borrowerName}\n💰 ต้องจ่ายวันนี้: ${formatMoney(loan.amountDue)}\nเงินต้น: ${formatMoney(loan.principalAmount)}\n📅 วันที่ครบกำหนด: ${formatDueDate(loan.dueDate)}`;
 
     if (currentMessage.length + line.length > DISCORD_MESSAGE_LIMIT) {
       messages.push(currentMessage);

@@ -1136,6 +1136,12 @@ a,
   color: var(--color-accent);
 }
 
+.loan-status--due-today {
+  border-color: color-mix(in oklch, var(--color-danger) 48%, var(--color-rule));
+  background: color-mix(in oklch, var(--color-danger) 9%, transparent);
+  color: var(--color-danger);
+}
+
 .loan-status--overdue {
   border-color: color-mix(in oklch, var(--color-danger) 36%, var(--color-rule));
   color: color-mix(in oklch, var(--color-danger) 72%, var(--color-accent));
@@ -1381,6 +1387,18 @@ a,
   background:
     linear-gradient(135deg, color-mix(in oklch, var(--profile-accent) 10%, transparent), transparent 66%),
     color-mix(in oklch, var(--color-paper) 88%, var(--color-paper-2));
+}
+
+.dashboard-due-card--due-today {
+  border-color: color-mix(in oklch, var(--color-danger) 42%, var(--color-rule));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-danger) 14%, transparent), transparent 62%),
+    color-mix(in oklch, var(--color-paper) 90%, var(--color-paper-2));
+}
+
+.dashboard-due-card--due-today .dashboard-due-card__main p,
+.dashboard-due-card--due-today .dashboard-due-card__main strong {
+  color: var(--color-danger);
 }
 
 .loan-row--interactive {

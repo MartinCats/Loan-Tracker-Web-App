@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LoanStatusPill } from "@/components/loans/loan-status-pill";
 import { useLoanCardNavigation } from "@/components/loans/use-loan-card-navigation";
-import { formatDueLabel } from "@/lib/loans/urgency";
+import { formatDueLabel, getLoanUrgency } from "@/lib/loans/urgency";
 import { calculateCreditApplied, calculateTotalDue } from "@/lib/payments/calculator";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format/money";
@@ -22,11 +22,13 @@ export function DashboardDueCard({
   const { isOpening, isPressed, linkProps } = useLoanCardNavigation(detailHref);
   const currentDue = calculateTotalDue(loan);
   const creditApplied = calculateCreditApplied(loan);
+  const urgency = getLoanUrgency(loan, todayDate);
 
   return (
     <article
       className={cn(
         "dashboard-due-card loan-row--interactive",
+        `dashboard-due-card--${urgency}`,
         isPressed && "is-pressed",
         isOpening && "is-opening",
       )}

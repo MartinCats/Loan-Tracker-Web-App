@@ -1,6 +1,6 @@
 import type { Loan } from "@/lib/types/loan";
 
-export type LoanUrgency = "healthy" | "due-soon" | "overdue";
+export type LoanUrgency = "healthy" | "due-soon" | "due-today" | "overdue";
 
 const dueSoonDays = 3;
 
@@ -35,6 +35,10 @@ export function getLoanUrgency(
     return "overdue";
   }
 
+  if (daysLeft === 0) {
+    return "due-today";
+  }
+
   if (daysLeft <= dueSoonDays) {
     return "due-soon";
   }
@@ -51,7 +55,7 @@ export function formatDueLabel(dueDate: string, todayDate = getTodayDateKey()) {
   }
 
   if (daysLeft === 0) {
-    return "Today";
+    return "Due today";
   }
 
   if (daysLeft === 1) {
@@ -67,6 +71,8 @@ export function getUrgencyLabel(urgency: LoanUrgency) {
       return "Overdue";
     case "due-soon":
       return "Due soon";
+    case "due-today":
+      return "Due today";
     default:
       return "Healthy";
   }
@@ -79,9 +85,13 @@ export function getUrgencyRank(loan: Loan, todayDate = getTodayDateKey()) {
     return 0;
   }
 
-  if (urgency === "due-soon") {
+  if (urgency === "due-today") {
     return 1;
   }
 
-  return 2;
+  if (urgency === "due-soon") {
+    return 2;
+  }
+
+  return 3;
 }

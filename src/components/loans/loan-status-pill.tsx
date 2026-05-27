@@ -23,9 +23,11 @@ export function LoanStatusPill({
       ? t("status.healthy")
       : urgency === "due-soon"
         ? t("status.dueSoon")
-        : urgency === "overdue"
-          ? t("status.overdue")
-          : getUrgencyLabel(urgency);
+        : urgency === "due-today"
+          ? t("status.dueToday")
+          : urgency === "overdue"
+            ? t("status.overdue")
+            : getUrgencyLabel(urgency);
 
   return (
     <span className={`loan-status loan-status--${urgency}`}>

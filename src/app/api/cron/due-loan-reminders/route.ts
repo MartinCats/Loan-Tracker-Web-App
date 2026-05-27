@@ -188,6 +188,7 @@ function mapDueLoanReminder(row: DueLoanRow): DueLoanReminder {
     amountDue: calculateTotalDue(loan),
     borrowerName: loan.borrowerName,
     dueDate: loan.currentDueDate,
+    principalAmount: loan.principal,
     lenderProfile: {
       avatarEmoji: lenderProfile.avatar_emoji ?? "👦🏻",
       id: lenderProfile.id,

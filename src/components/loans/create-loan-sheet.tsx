@@ -44,6 +44,7 @@ export function CreateLoanSheet() {
 
   useEffect(() => {
     if (state.status === "success") {
+      blurActiveFormControl();
       setIsOpen(false);
       showFeedback(t("feedback.loanAdded"));
       router.refresh();
@@ -54,6 +55,8 @@ export function CreateLoanSheet() {
   }, [router, showFeedback, state]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    blurActiveFormControl(event.currentTarget);
+
     if (!previewStore) {
       return;
     }
@@ -85,6 +88,7 @@ export function CreateLoanSheet() {
       currentDueDate,
     });
     window.setTimeout(() => {
+      blurActiveFormControl();
       setPreviewMessage("Preview mode: loan added. Data resets on refresh.");
       showFeedback(t("feedback.loanAdded"));
       setIsOpen(false);
@@ -257,6 +261,20 @@ export function CreateLoanSheet() {
       ) : null}
     </>
   );
+}
+
+function blurActiveFormControl(scope?: HTMLElement) {
+  const activeElement = document.activeElement;
+
+  if (!(activeElement instanceof HTMLElement)) {
+    return;
+  }
+
+  if (scope && !scope.contains(activeElement)) {
+    return;
+  }
+
+  activeElement.blur();
 }
 
 function scrollToLoan(loanId: string) {

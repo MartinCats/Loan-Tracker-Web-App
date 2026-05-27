@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoanList } from "@/components/loans/loan-list";
+import type { LoansViewMode } from "@/components/loans/loans-page-content";
+import { cn } from "@/lib/cn";
+import { formatMoney } from "@/lib/format/money";
 import {
   getDaysUntilDue,
   getLoanUrgency,
@@ -10,6 +13,8 @@ import {
 } from "@/lib/loans/urgency";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/use-i18n";
+import type { LenderProfile } from "@/lib/lender-profiles/types";
+import { calculateTotalDue } from "@/lib/payments/calculator";
 import type { Loan } from "@/lib/types/loan";
 
 type LoanFilter = "all" | "overdue" | "due-today" | "upcoming";
@@ -36,18 +41,27 @@ const sortOptions: Array<{ labelKey: MessageKey; value: LoanSort }> = [
 ];
 
 export function LoanBrowser({
+  activeLenderProfile,
   loans,
   todayDate,
+  viewMode = "normal",
 }: {
+  activeLenderProfile?: LenderProfile | null;
   loans: Loan[];
   todayDate: string;
+  viewMode?: LoansViewMode;
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [state, setState] = useState<LoanBrowserState>({
     search: "",
     filter: "all",
     sort: "urgency",
   });
+
+  useEffect(() => {
+    setGeneratedAt(new Date());
+  }, [viewMode]);
 
   const visibleLoans = useMemo(() => {
     const search = state.search.trim().toLowerCase();
@@ -75,8 +89,29 @@ export function LoanBrowser({
       .sort((a, b) => sortLoans(a, b, state.sort, todayDate));
   }, [loans, state, todayDate]);
 
+  const selectedFilterLabel = t(
+    filterOptions.find((option) => option.value === state.filter)?.labelKey ??
+      "loans.all",
+  );
+
   return (
-    <div className="loan-browser plain-loan-browser">
+    <div
+      className={cn(
+        "loan-browser plain-loan-browser",
+        viewMode === "collection" && "loan-browser--collection",
+      )}
+    >
+      {viewMode === "collection" ? (
+        <CollectionScreenshotHeader
+          activeLenderProfile={activeLenderProfile}
+          generatedAt={generatedAt}
+          language={language}
+          selectedFilterLabel={selectedFilterLabel}
+          totalItems={visibleLoans.length}
+          t={t}
+        />
+      ) : null}
+
       <div className="compact-browser-controls">
         <label className="plain-field">
           <span>{t("common.search")}</span>
@@ -131,27 +166,139 @@ export function LoanBrowser({
         </div>
       </div>
 
-      <LoanList
-        emptyAction={
-          state.filter === "all" && !state.search ? (
-            null
-          ) : state.search ? (
-            <button
-              className="plain-button"
-              onClick={() => setState((current) => ({ ...current, search: "" }))}
-              type="button"
-            >
-              {t("loans.clearSearch")}
-            </button>
-          ) : null
-        }
-        emptyDescription={getEmptyDescription(state.filter, state.search, t)}
-        emptyTitle={getEmptyTitle(state.filter, state.search, t)}
-        loans={visibleLoans}
-        mode="active"
-        todayDate={todayDate}
-      />
+      {viewMode === "collection" ? (
+        visibleLoans.length === 0 ? (
+          <div className="empty-state collection-empty-state">
+            <h3>{getEmptyTitle(state.filter, state.search, t)}</h3>
+            <p>{getEmptyDescription(state.filter, state.search, t)}</p>
+          </div>
+        ) : (
+          <div className="collection-loan-list">
+            {visibleLoans.map((loan) => (
+              <CollectionLoanCard
+                activeLenderProfile={activeLenderProfile}
+                key={loan.id}
+                language={language}
+                loan={loan}
+                t={t}
+              />
+            ))}
+          </div>
+        )
+      ) : (
+        <LoanList
+          emptyAction={
+            state.filter === "all" && !state.search ? (
+              null
+            ) : state.search ? (
+              <button
+                className="plain-button"
+                onClick={() => setState((current) => ({ ...current, search: "" }))}
+                type="button"
+              >
+                {t("loans.clearSearch")}
+              </button>
+            ) : null
+          }
+          emptyDescription={getEmptyDescription(state.filter, state.search, t)}
+          emptyTitle={getEmptyTitle(state.filter, state.search, t)}
+          loans={visibleLoans}
+          mode="active"
+          todayDate={todayDate}
+        />
+      )}
     </div>
+  );
+}
+
+function CollectionScreenshotHeader({
+  activeLenderProfile,
+  generatedAt,
+  language,
+  selectedFilterLabel,
+  totalItems,
+  t,
+}: {
+  activeLenderProfile?: LenderProfile | null;
+  generatedAt: Date | null;
+  language: "en" | "th";
+  selectedFilterLabel: string;
+  totalItems: number;
+  t: (key: MessageKey) => string;
+}) {
+  const profileLabel = activeLenderProfile
+    ? `${activeLenderProfile.avatarEmoji} ${activeLenderProfile.name}`
+    : t("profiles.mainFallback");
+
+  return (
+    <section className="collection-header" aria-label={t("loans.collectionHeader")}>
+      <div className="collection-header__identity">
+        <strong>{profileLabel}</strong>
+        <span>{t("loans.collectionMode")}</span>
+      </div>
+      <div className="collection-header__meta">
+        <span>
+          {t("loans.selectedFilter")}: {selectedFilterLabel}
+        </span>
+        <span>
+          {t("loans.generatedAt")}:{" "}
+          {generatedAt ? formatGeneratedAt(generatedAt, language) : "-"}
+        </span>
+        <span>
+          {t("loans.totalVisible")}: {totalItems}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function CollectionLoanCard({
+  activeLenderProfile,
+  language,
+  loan,
+  t,
+}: {
+  activeLenderProfile?: LenderProfile | null;
+  language: "en" | "th";
+  loan: Loan;
+  t: (key: MessageKey) => string;
+}) {
+  const dueAmount = calculateTotalDue(loan);
+  const profileName = activeLenderProfile?.name ?? t("profiles.mainFallback");
+
+  return (
+    <article className="collection-loan-card">
+      <div className="collection-loan-card__title">
+        <span className="collection-checkmark" aria-hidden="true">
+          🎯
+        </span>
+        <strong>{loan.borrowerName}</strong>
+        <span className="collection-profile-chip">
+          {activeLenderProfile ? (
+            <span aria-hidden="true">{activeLenderProfile.avatarEmoji}</span>
+          ) : null}
+          <span>{profileName}</span>
+        </span>
+      </div>
+      <div className="collection-loan-card__metrics">
+        <span>{t("loans.collectionPrincipal")}</span>
+        <span>{t("loans.collectionInterestRate")}</span>
+        <span>{t("loans.collectionDue")}</span>
+        <span>{t("loans.collectionDate")}</span>
+        <strong className="collection-metric-value collection-metric-value--principal">
+          {formatMoney(loan.principal)}
+        </strong>
+        <strong className="collection-metric-value collection-metric-value--rate">
+          {loan.interestRate}%
+        </strong>
+        <strong className="collection-metric-value collection-metric-value--due">
+          {formatMoney(dueAmount)}
+        </strong>
+        <strong className="collection-metric-value collection-metric-value--date">
+          {formatCollectionDate(loan.currentDueDate, language)}
+        </strong>
+      </div>
+    </article>
   );
 }
 
@@ -219,4 +366,26 @@ function getEmptyDescription(
   };
 
   return descriptions[filter];
+}
+
+function formatCollectionDate(dateKey: string, language: "en" | "th") {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: language === "th" ? "2-digit" : undefined,
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+function formatGeneratedAt(date: Date, language: "en" | "th") {
+  return new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }

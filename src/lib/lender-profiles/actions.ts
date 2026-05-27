@@ -126,6 +126,11 @@ function revalidateProfileViews() {
   revalidatePath("/profiles");
 }
 
+function withFeedback(path: string, feedback: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}feedback=${feedback}`;
+}
+
 export async function createLenderProfileAction(
   _prevState: LenderProfileActionState,
   formData: FormData,
@@ -169,7 +174,7 @@ export async function createLenderProfileAction(
 
 export async function createLenderProfileFormAction(formData: FormData) {
   if (isPreviewMode()) {
-    redirect("/profiles");
+    redirect(withFeedback("/profiles", "profile-created"));
   }
 
   const parsed = parseProfileName(formData);
@@ -196,12 +201,12 @@ export async function createLenderProfileFormAction(formData: FormData) {
   }
 
   revalidateProfileViews();
-  redirect("/profiles");
+  redirect(withFeedback("/profiles", "profile-created"));
 }
 
 export async function selectLenderProfileAction(formData: FormData) {
   if (isPreviewMode()) {
-    redirect("/dashboard");
+    redirect(withFeedback("/dashboard", "profile-switched"));
   }
 
   const profileId = parseProfileId(formData);
@@ -233,7 +238,7 @@ export async function selectLenderProfileAction(formData: FormData) {
 
   await setActiveLenderProfileIdCookie(profileId);
   revalidateProfileViews();
-  redirect("/dashboard");
+  redirect(withFeedback("/dashboard", "profile-switched"));
 }
 
 export async function updateLenderProfileAction(
@@ -290,7 +295,7 @@ export async function updateLenderProfileFormAction(formData: FormData) {
   const returnTo = getSafeProfileReturnPath(formData);
 
   if (isPreviewMode()) {
-    redirect(returnTo);
+    redirect(withFeedback(returnTo, "profile-saved"));
   }
 
   const profileId = parseProfileId(formData);
@@ -326,7 +331,7 @@ export async function updateLenderProfileFormAction(formData: FormData) {
   }
 
   revalidateProfileViews();
-  redirect(returnTo);
+  redirect(withFeedback(returnTo, "profile-saved"));
 }
 
 export async function deleteLenderProfileAction(
@@ -397,7 +402,7 @@ export async function deleteLenderProfileFormAction(formData: FormData) {
   const returnTo = getSafeProfileReturnPath(formData);
 
   if (isPreviewMode()) {
-    redirect(returnTo);
+    redirect(withFeedback(returnTo, "profile-deleted"));
   }
 
   const profileId = parseProfileId(formData);
@@ -448,5 +453,10 @@ export async function deleteLenderProfileFormAction(formData: FormData) {
   }
 
   revalidateProfileViews();
-  redirect(shouldResetActiveProfile ? "/profiles" : returnTo);
+  redirect(
+    withFeedback(
+      shouldResetActiveProfile ? "/profiles" : returnTo,
+      "profile-deleted",
+    ),
+  );
 }

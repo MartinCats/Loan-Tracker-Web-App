@@ -9,6 +9,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useI18n } from "@/lib/i18n/use-i18n";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type FeedbackTone = "success" | "error";
 
@@ -75,6 +77,7 @@ function RouteFeedbackBridge({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const feedback = searchParams.get("feedback");
 
   useEffect(() => {
@@ -82,10 +85,10 @@ function RouteFeedbackBridge({
       return;
     }
 
-    if (feedback === "loan-moved") {
-      showFeedback("Loan moved to Archive");
-    } else if (feedback === "loan-deleted") {
-      showFeedback("Loan deleted");
+    const messageKey = getFeedbackMessageKey(feedback);
+
+    if (messageKey) {
+      showFeedback(t(messageKey));
     }
 
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -94,9 +97,28 @@ function RouteFeedbackBridge({
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
       scroll: false,
     });
-  }, [feedback, pathname, router, searchParams, showFeedback]);
+  }, [feedback, pathname, router, searchParams, showFeedback, t]);
 
   return null;
+}
+
+function getFeedbackMessageKey(feedback: string): MessageKey | null {
+  switch (feedback) {
+    case "loan-moved":
+      return "feedback.loanMoved";
+    case "loan-deleted":
+      return "feedback.loanDeleted";
+    case "profile-created":
+      return "feedback.profileCreated";
+    case "profile-saved":
+      return "feedback.profileSaved";
+    case "profile-deleted":
+      return "feedback.profileDeleted";
+    case "profile-switched":
+      return "feedback.profileSwitched";
+    default:
+      return null;
+  }
 }
 
 export function useActionFeedback() {

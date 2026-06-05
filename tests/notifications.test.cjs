@@ -80,8 +80,8 @@ test("formats multiple due loans as separate Discord items", () => {
   assert.match(message, /รายการที่สอง/);
 });
 
-test("formats due tomorrow reminder wording", () => {
-  const [message] = formatDueLoanReminderMessages({
+test("does not format due tomorrow reminder section", () => {
+  const messages = formatDueLoanReminderMessages({
     lenderProfile: {
       id: "profile-fox",
       name: "กัน",
@@ -91,8 +91,7 @@ test("formats due tomorrow reminder wording", () => {
     loans: [makeReminder({ daysUntilDue: 1 })],
   });
 
-  assert.match(message, /🟠 พรุ่งนี้ครบกำหนด 1 รายการ/);
-  assert.match(message, /💰 ต้องจ่ายพรุ่งนี้: ฿1,000/);
+  assert.equal(messages.length, 0);
 });
 
 test("formats due in 2 days reminder wording", () => {
@@ -126,6 +125,23 @@ test("formats mixed due window reminders in separate sections", () => {
   });
 
   assert.match(message, /🔴 วันนี้ครบกำหนด 1 รายการ/);
-  assert.match(message, /🟠 พรุ่งนี้ครบกำหนด 1 รายการ/);
+  assert.doesNotMatch(message, /🟠 พรุ่งนี้ครบกำหนด/);
   assert.match(message, /🟡 อีก 2 วันครบกำหนด 1 รายการ/);
+});
+
+test("can prefix lender profile blocks with a Discord separator", () => {
+  const [message] = formatDueLoanReminderMessages(
+    {
+      lenderProfile: {
+        id: "profile-dog",
+        name: "แนน",
+        avatarEmoji: "🐶",
+        themeColor: "blue",
+      },
+      loans: [makeReminder()],
+    },
+    { includeProfileSeparator: true },
+  );
+
+  assert.match(message, /^━━━━━━━━━━━━━━\n\n🔵 🐶 แนน/);
 });

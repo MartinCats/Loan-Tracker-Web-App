@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/format/money";
 
 const DISCORD_MESSAGE_LIMIT = 1900;
+const PROFILE_SEPARATOR = "━━━━━━━━━━━━━━";
 
 export type DueLoanReminder = {
   lenderProfile: {
@@ -45,12 +46,21 @@ export function groupDueLoanReminders(
 
 export function formatDueLoanReminderMessages(
   group: DueLoanReminderGroup,
+  options: { includeProfileSeparator?: boolean } = {},
 ): string[] {
-  const title = formatProfileTitle(group.lenderProfile);
+  const sections = groupLoansByDueTiming(group.loans);
+
+  if (sections.length === 0) {
+    return [];
+  }
+
+  const title = options.includeProfileSeparator
+    ? `${PROFILE_SEPARATOR}\n\n${formatProfileTitle(group.lenderProfile)}`
+    : formatProfileTitle(group.lenderProfile);
   const messages: string[] = [];
   let currentMessage = title;
 
-  for (const section of groupLoansByDueTiming(group.loans)) {
+  for (const section of sections) {
     const dueCopy = getDueTimingCopy(section.daysUntilDue);
     const sectionHeader = `\n\n${dueCopy.heading} ${section.loans.length} รายการ`;
     const sectionBody = section.loans
@@ -100,6 +110,10 @@ function groupLoansByDueTiming(loans: DueLoanReminder[]) {
   const groups = new Map<0 | 1 | 2, DueLoanReminder[]>();
 
   for (const loan of loans) {
+    if (loan.daysUntilDue === 1) {
+      continue;
+    }
+
     groups.set(loan.daysUntilDue, [
       ...(groups.get(loan.daysUntilDue) ?? []),
       loan,

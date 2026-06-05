@@ -94,7 +94,7 @@ export async function GET(request: Request) {
 
   const rows = ((data ?? []) as unknown as DueLoanRow[]).filter((row) => {
     const daysUntilDue = getDaysBetweenDateKeys(today, row.current_due_date);
-    return daysUntilDue >= 0 && daysUntilDue <= reminderWindowDays;
+    return daysUntilDue === 0 || daysUntilDue === reminderWindowDays;
   });
 
   if (rows.length === 0) {
@@ -119,8 +119,10 @@ export async function GET(request: Request) {
   let failed = 0;
   const errors: string[] = [];
 
-  for (const group of groups) {
-    const messages = formatDueLoanReminderMessages(group);
+  for (const [groupIndex, group] of groups.entries()) {
+    const messages = formatDueLoanReminderMessages(group, {
+      includeProfileSeparator: groupIndex > 0,
+    });
 
     for (const message of messages) {
       const result = await sendDiscordWebhook(message);

@@ -15,17 +15,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const reminderWindowDays = 2;
+
 type DueLoanRow = LoanRow & {
   lender_profiles:
     | {
+        avatar_emoji: string | null;
         id: string;
         name: string;
-        avatar_emoji: string | null;
+        theme_color: string | null;
       }
     | {
+        avatar_emoji: string | null;
         id: string;
         name: string;
-        avatar_emoji: string | null;
+        theme_color: string | null;
       }[];
 };
 
@@ -64,14 +68,17 @@ export async function GET(request: Request) {
   }
 
   const today = getBangkokDateKey();
+  const windowEndDate = addDaysToDateKey(today, reminderWindowDays);
   const { data, error } = await supabase
     .from("loans")
     .select(
-      "id,user_id,lender_profile_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at,lender_profiles!inner(id,name,avatar_emoji)",
+      "id,user_id,lender_profile_id,borrower_name,principal,interest_rate,payment_cycle,current_due_date,accumulated_profit,unpaid_interest,credit_balance,status,created_at,updated_at,lender_profiles!inner(id,name,avatar_emoji,theme_color)",
     )
     .eq("status", "active")
-    .eq("current_due_date", today)
+    .gte("current_due_date", today)
+    .lte("current_due_date", windowEndDate)
     .order("lender_profile_id", { ascending: true })
+    .order("current_due_date", { ascending: true })
     .order("borrower_name", { ascending: true });
 
   if (error) {
@@ -85,19 +92,28 @@ export async function GET(request: Request) {
     );
   }
 
-  const rows = (data ?? []) as DueLoanRow[];
+  const rows = ((data ?? []) as unknown as DueLoanRow[]).filter((row) => {
+    const daysUntilDue = getDaysBetweenDateKeys(today, row.current_due_date);
+    return daysUntilDue >= 0 && daysUntilDue <= reminderWindowDays;
+  });
 
   if (rows.length === 0) {
-    console.info(`Skipped due loan reminder cron: no due loans for ${today}.`);
+    console.info(
+      `Skipped due loan reminder cron: no due loans from ${today} to ${windowEndDate}.`,
+    );
     return NextResponse.json({
       dueLoans: 0,
       ok: true,
       sent: 0,
       skipped: true,
+      window: {
+        from: today,
+        to: windowEndDate,
+      },
     });
   }
 
-  const reminders = rows.map(mapDueLoanReminder);
+  const reminders = rows.map((row) => mapDueLoanReminder(row, today));
   const groups = groupDueLoanReminders(reminders);
   let sent = 0;
   let failed = 0;
@@ -136,6 +152,10 @@ export async function GET(request: Request) {
         failed,
         ok: false,
         sent,
+        window: {
+          from: today,
+          to: windowEndDate,
+        },
       },
       { status: 502 },
     );
@@ -145,6 +165,10 @@ export async function GET(request: Request) {
     dueLoans: rows.length,
     ok: true,
     sent,
+    window: {
+      from: today,
+      to: windowEndDate,
+    },
   });
 }
 
@@ -178,21 +202,54 @@ function getBangkokDateKey(date = new Date()) {
   return `${partValues.year}-${partValues.month}-${partValues.day}`;
 }
 
-function mapDueLoanReminder(row: DueLoanRow): DueLoanReminder {
+function mapDueLoanReminder(row: DueLoanRow, today: string): DueLoanReminder {
   const loan = mapLoanRow(row);
   const lenderProfile = Array.isArray(row.lender_profiles)
     ? row.lender_profiles[0]
     : row.lender_profiles;
+  const daysUntilDue = getDaysBetweenDateKeys(today, loan.currentDueDate);
 
   return {
     amountDue: calculateTotalDue(loan),
     borrowerName: loan.borrowerName,
+    daysUntilDue: normalizeReminderDays(daysUntilDue),
     dueDate: loan.currentDueDate,
     principalAmount: loan.principal,
     lenderProfile: {
       avatarEmoji: lenderProfile.avatar_emoji ?? "👦🏻",
       id: lenderProfile.id,
       name: lenderProfile.name,
+      themeColor: lenderProfile.theme_color ?? undefined,
     },
   };
+}
+
+function normalizeReminderDays(daysUntilDue: number): 0 | 1 | 2 {
+  if (daysUntilDue === 0 || daysUntilDue === 1 || daysUntilDue === 2) {
+    return daysUntilDue;
+  }
+
+  return 2;
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getDaysBetweenDateKeys(fromDate: string, toDate: string) {
+  return Math.round(
+    (dateKeyToUtcTime(toDate) - dateKeyToUtcTime(fromDate)) / 86_400_000,
+  );
+}
+
+function dateKeyToUtcTime(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
 }

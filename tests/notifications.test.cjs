@@ -11,9 +11,11 @@ function makeReminder(overrides = {}) {
       id: "profile-fox",
       name: "กัน",
       avatarEmoji: "🦊",
+      themeColor: "green",
     },
     borrowerName: "ทดสอบแจ้งเตือน",
     amountDue: 1000,
+    daysUntilDue: 0,
     principalAmount: 10000,
     dueDate: "2026-05-27",
     ...overrides,
@@ -29,6 +31,7 @@ test("groups due loan reminders by lender profile", () => {
         id: "profile-cat",
         name: "แมว",
         avatarEmoji: "🐱",
+        themeColor: "rose",
       },
     }),
   ]);
@@ -44,12 +47,13 @@ test("formats Discord due loan reminder with count, due amount, principal, and d
       id: "profile-fox",
       name: "กัน",
       avatarEmoji: "🦊",
+      themeColor: "green",
     },
     loans: [makeReminder()],
   });
 
-  assert.match(message, /🦊 กัน/);
-  assert.match(message, /🔔 วันนี้ครบกำหนด 1 รายการ/);
+  assert.match(message, /🟢 🦊 กัน/);
+  assert.match(message, /🔴 วันนี้ครบกำหนด 1 รายการ/);
   assert.match(message, /👤 ลูกหนี้: ทดสอบแจ้งเตือน/);
   assert.match(message, /💰 ต้องจ่ายวันนี้: ฿1,000/);
   assert.match(message, /เงินต้น: ฿10,000/);
@@ -62,6 +66,7 @@ test("formats multiple due loans as separate Discord items", () => {
       id: "profile-fox",
       name: "กัน",
       avatarEmoji: "🦊",
+      themeColor: "green",
     },
     loans: [
       makeReminder(),
@@ -69,8 +74,58 @@ test("formats multiple due loans as separate Discord items", () => {
     ],
   });
 
-  assert.match(message, /🔔 วันนี้ครบกำหนด 2 รายการ/);
+  assert.match(message, /🔴 วันนี้ครบกำหนด 2 รายการ/);
   assert.match(message, /รายการที่ 1/);
   assert.match(message, /รายการที่ 2/);
   assert.match(message, /รายการที่สอง/);
+});
+
+test("formats due tomorrow reminder wording", () => {
+  const [message] = formatDueLoanReminderMessages({
+    lenderProfile: {
+      id: "profile-fox",
+      name: "กัน",
+      avatarEmoji: "🦊",
+      themeColor: "green",
+    },
+    loans: [makeReminder({ daysUntilDue: 1 })],
+  });
+
+  assert.match(message, /🟠 พรุ่งนี้ครบกำหนด 1 รายการ/);
+  assert.match(message, /💰 ต้องจ่ายพรุ่งนี้: ฿1,000/);
+});
+
+test("formats due in 2 days reminder wording", () => {
+  const [message] = formatDueLoanReminderMessages({
+    lenderProfile: {
+      id: "profile-fox",
+      name: "กัน",
+      avatarEmoji: "🦊",
+      themeColor: "green",
+    },
+    loans: [makeReminder({ daysUntilDue: 2 })],
+  });
+
+  assert.match(message, /🟡 อีก 2 วันครบกำหนด 1 รายการ/);
+  assert.match(message, /💰 ต้องจ่ายในอีก 2 วัน: ฿1,000/);
+});
+
+test("formats mixed due window reminders in separate sections", () => {
+  const [message] = formatDueLoanReminderMessages({
+    lenderProfile: {
+      id: "profile-fox",
+      name: "กัน",
+      avatarEmoji: "🦊",
+      themeColor: "green",
+    },
+    loans: [
+      makeReminder({ borrowerName: "วันนี้", daysUntilDue: 0 }),
+      makeReminder({ borrowerName: "พรุ่งนี้", daysUntilDue: 1 }),
+      makeReminder({ borrowerName: "อีกสองวัน", daysUntilDue: 2 }),
+    ],
+  });
+
+  assert.match(message, /🔴 วันนี้ครบกำหนด 1 รายการ/);
+  assert.match(message, /🟠 พรุ่งนี้ครบกำหนด 1 รายการ/);
+  assert.match(message, /🟡 อีก 2 วันครบกำหนด 1 รายการ/);
 });

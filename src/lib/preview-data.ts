@@ -4,6 +4,7 @@ export const previewLoans: Loan[] = [
   {
     id: "demo",
     userId: "preview-user",
+    lenderProfileId: "preview-lender-profile",
     borrowerName: "Mina Ch.",
     principal: 12500,
     interestRate: 8,
@@ -19,6 +20,7 @@ export const previewLoans: Loan[] = [
   {
     id: "demo-active-2",
     userId: "preview-user",
+    lenderProfileId: "preview-lender-profile",
     borrowerName: "Arun P.",
     principal: 9800,
     interestRate: 6,
@@ -34,6 +36,7 @@ export const previewLoans: Loan[] = [
   {
     id: "demo-overdue",
     userId: "preview-user",
+    lenderProfileId: "preview-lender-profile",
     borrowerName: "Kanda R.",
     principal: 7200,
     interestRate: 7,
@@ -49,6 +52,7 @@ export const previewLoans: Loan[] = [
   {
     id: "demo-closed",
     userId: "preview-user",
+    lenderProfileId: "preview-lender-profile",
     borrowerName: "Nok S.",
     principal: 6000,
     interestRate: 5,

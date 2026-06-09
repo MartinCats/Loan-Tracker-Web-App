@@ -52,6 +52,7 @@ export function mapLoanRow(row: LoanRow): Loan {
   return {
     id: row.id,
     userId: row.user_id,
+    lenderProfileId: row.lender_profile_id,
     borrowerName: row.borrower_name,
     principal: Number(row.principal),
     interestRate: Number(row.interest_rate),

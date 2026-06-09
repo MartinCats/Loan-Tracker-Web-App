@@ -116,6 +116,16 @@ function getFeedbackMessageKey(feedback: string): MessageKey | null {
       return "feedback.profileDeleted";
     case "profile-switched":
       return "feedback.profileSwitched";
+    case "collector-created":
+      return "feedback.collectorCreated";
+    case "collector-saved":
+      return "feedback.collectorSaved";
+    case "collector-paused":
+      return "feedback.collectorPaused";
+    case "collector-reactivated":
+      return "feedback.collectorReactivated";
+    case "collector-deleted":
+      return "feedback.collectorDeleted";
     default:
       return null;
   }

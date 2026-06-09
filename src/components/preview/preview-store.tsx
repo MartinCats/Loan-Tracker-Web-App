@@ -62,6 +62,7 @@ export function PreviewProvider({
     const loan: Loan = {
       id: `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       userId: "preview-user",
+      lenderProfileId: "preview-lender-profile",
       borrowerName: input.borrowerName,
       principal: input.principal,
       interestRate: input.interestRate,

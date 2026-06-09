@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { signOutAction } from "@/app/auth/actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { supportedLanguages, type Language } from "@/lib/i18n/messages";
@@ -65,6 +66,12 @@ export function SettingsContent({
           <strong>
             {isSupabaseReady ? t("settings.variablesPresent") : t("settings.notSet")}
           </strong>
+        </div>
+        <div className="settings-row">
+          <span>{t("collectorLinks.title")}</span>
+          <Link className="settings-inline-link" href="/settings/collector-links">
+            {t("collectorLinks.manage")}
+          </Link>
         </div>
         {isPreviewMode ? (
           <div className="empty-state">

@@ -375,3 +375,154 @@ using (
       and owner_profile.user_id = auth.uid()
   )
 );
+
+create table if not exists public.collection_shares (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  token text unique not null,
+  name text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint collection_shares_name_check check (length(trim(name)) > 0),
+  constraint collection_shares_token_check check (length(trim(token)) >= 24)
+);
+
+create table if not exists public.collection_share_profiles (
+  id uuid primary key default gen_random_uuid(),
+  share_id uuid not null references public.collection_shares(id) on delete cascade,
+  lender_profile_id uuid not null references public.lender_profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint collection_share_profiles_unique unique (share_id, lender_profile_id)
+);
+
+create index if not exists collection_shares_owner_user_id_idx
+on public.collection_shares (owner_user_id);
+
+create index if not exists collection_shares_token_idx
+on public.collection_shares (token);
+
+create index if not exists collection_share_profiles_share_id_idx
+on public.collection_share_profiles (share_id);
+
+create index if not exists collection_share_profiles_lender_profile_id_idx
+on public.collection_share_profiles (lender_profile_id);
+
+alter table public.collection_shares enable row level security;
+
+grant select, insert, update, delete on public.collection_shares to authenticated;
+
+drop policy if exists "Users can select own collection shares" on public.collection_shares;
+create policy "Users can select own collection shares"
+on public.collection_shares
+for select
+to authenticated
+using (owner_user_id = auth.uid());
+
+drop policy if exists "Users can insert own collection shares" on public.collection_shares;
+create policy "Users can insert own collection shares"
+on public.collection_shares
+for insert
+to authenticated
+with check (owner_user_id = auth.uid());
+
+drop policy if exists "Users can update own collection shares" on public.collection_shares;
+create policy "Users can update own collection shares"
+on public.collection_shares
+for update
+to authenticated
+using (owner_user_id = auth.uid())
+with check (owner_user_id = auth.uid());
+
+drop policy if exists "Users can delete own collection shares" on public.collection_shares;
+create policy "Users can delete own collection shares"
+on public.collection_shares
+for delete
+to authenticated
+using (owner_user_id = auth.uid());
+
+alter table public.collection_share_profiles enable row level security;
+
+grant select, insert, update, delete on public.collection_share_profiles to authenticated;
+
+drop policy if exists "Users can select own collection share profiles" on public.collection_share_profiles;
+create policy "Users can select own collection share profiles"
+on public.collection_share_profiles
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.collection_shares
+    where collection_shares.id = collection_share_profiles.share_id
+      and collection_shares.owner_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can insert own collection share profiles" on public.collection_share_profiles;
+create policy "Users can insert own collection share profiles"
+on public.collection_share_profiles
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.collection_shares
+    where collection_shares.id = collection_share_profiles.share_id
+      and collection_shares.owner_user_id = auth.uid()
+  )
+  and exists (
+    select 1
+    from public.lender_profiles
+    where lender_profiles.id = collection_share_profiles.lender_profile_id
+      and lender_profiles.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can update own collection share profiles" on public.collection_share_profiles;
+create policy "Users can update own collection share profiles"
+on public.collection_share_profiles
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.collection_shares
+    where collection_shares.id = collection_share_profiles.share_id
+      and collection_shares.owner_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.collection_shares
+    where collection_shares.id = collection_share_profiles.share_id
+      and collection_shares.owner_user_id = auth.uid()
+  )
+  and exists (
+    select 1
+    from public.lender_profiles
+    where lender_profiles.id = collection_share_profiles.lender_profile_id
+      and lender_profiles.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can delete own collection share profiles" on public.collection_share_profiles;
+create policy "Users can delete own collection share profiles"
+on public.collection_share_profiles
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.collection_shares
+    where collection_shares.id = collection_share_profiles.share_id
+      and collection_shares.owner_user_id = auth.uid()
+  )
+);
+
+drop trigger if exists set_collection_shares_updated_at on public.collection_shares;
+create trigger set_collection_shares_updated_at
+before update on public.collection_shares
+for each row
+execute function public.set_updated_at();

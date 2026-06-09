@@ -10,6 +10,7 @@ export type PaymentCycle =
 export type Loan = {
   id: string;
   userId: string;
+  lenderProfileId: string;
   borrowerName: string;
   principal: number;
   interestRate: number;

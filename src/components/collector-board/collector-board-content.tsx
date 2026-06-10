@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/format/money";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
-const filters: CollectorFilter[] = ["today", "next_2_days", "month", "all"];
+const filters: CollectorFilter[] = ["today", "week", "month", "all"];
 
 export function CollectorBoardContent({
   result,
@@ -57,7 +57,13 @@ export function CollectorBoardContent({
     <main className="collector-public-shell">
       <header className="collector-board-header">
         <div>
-          <p className="collector-eyebrow">{t("collectorBoard.eyebrow")}</p>
+          <div className="collector-board-title-row">
+            <p className="collector-eyebrow">{t("collectorBoard.eyebrow")}</p>
+            <span className="collector-today-chip">
+              <span aria-hidden="true" />
+              วันนี้ {formatCompactDate(result.todayDate)}
+            </span>
+          </div>
           <h1>{result.share.name}</h1>
           <p>{t("collectorBoard.description")}</p>
         </div>
@@ -127,11 +133,17 @@ function CollectorDateSection({
   group: CollectorDateGroup;
   todayDate: string;
 }) {
+  const totalDue = group.loans.reduce((sum, loan) => sum + loan.amountDue, 0);
+
   return (
     <section className="collector-date-section">
       <div className="collector-date-heading">
-        <h2>{formatDateLabel(group.dueDate)}</h2>
-        <span>{group.loans.length}</span>
+        <div>
+          <h2>{formatCompactDate(group.dueDate)}</h2>
+          <p>
+            {group.loans.length} รายการ · รวม {formatMoney(totalDue)}
+          </p>
+        </div>
       </div>
       <div className="collector-card-list">
         {group.loans.map((loan) => (
@@ -173,29 +185,34 @@ function CollectorLoanCard({
       </div>
 
       <p className="collector-owner-chip">
-        <span>เจ้าของเงิน:</span>
         <strong>
           {loan.lenderProfile.avatarEmoji} {loan.lenderProfile.name}
         </strong>
+        <span>เจ้าของเงิน</span>
       </p>
 
-      <dl className="collector-loan-public-card__metrics">
-        <div className="collector-metric--due">
-          <dt>{dueLabel}</dt>
-          <dd>{formatMoney(loan.amountDue)}</dd>
-        </div>
-        <div className="collector-metric-row">
-          <dt>เงินต้น</dt>
-          <dd>{formatMoney(loan.principal)}</dd>
-          <span aria-hidden="true">|</span>
-          <dt>ดอก</dt>
-          <dd>{formatRate(loan.interestRate)}</dd>
-        </div>
-        <div className="collector-metric-row collector-metric-row--date">
-          <dt>กำหนด</dt>
-          <dd>{formatCompactDate(loan.currentDueDate)}</dd>
-        </div>
-      </dl>
+      <div className="collector-loan-public-card__body">
+        <dl className="collector-loan-public-card__details">
+          <div className="collector-metric-row">
+            <dt>เงินต้น</dt>
+            <dd>{formatMoney(loan.principal)}</dd>
+            <span aria-hidden="true">|</span>
+            <dt>ดอก</dt>
+            <dd>{formatRate(loan.interestRate)}</dd>
+          </div>
+          <div className="collector-metric-row collector-metric-row--date">
+            <dt>กำหนด</dt>
+            <dd>{formatCompactDate(loan.currentDueDate)}</dd>
+          </div>
+        </dl>
+
+        <dl className="collector-loan-public-card__metrics">
+          <div className="collector-metric--due">
+            <dd>{formatMoney(loan.amountDue)}</dd>
+            <dt>{dueLabel}</dt>
+          </div>
+        </dl>
+      </div>
     </article>
   );
 }
@@ -211,17 +228,6 @@ function formatUpdatedAt(value: string) {
   });
 
   return formatter.format(new Date(value));
-}
-
-function formatDateLabel(dateKey: string) {
-  const date = dateFromKey(dateKey);
-
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-    year: "numeric",
-  }).format(date);
 }
 
 function formatCompactDate(dateKey: string) {

@@ -3,11 +3,22 @@ import type { Loan } from "@/lib/types/loan";
 export type LoanUrgency = "healthy" | "due-soon" | "due-today" | "overdue";
 
 const dueSoonDays = 3;
+const bangkokDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "2-digit",
+  month: "2-digit",
+  timeZone: "Asia/Bangkok",
+  year: "numeric",
+});
 
 export function getTodayDateKey(now = new Date()) {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const parts = bangkokDateFormatter.formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error("Could not format Bangkok date key.");
+  }
 
   return `${year}-${month}-${day}`;
 }

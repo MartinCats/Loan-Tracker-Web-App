@@ -62,19 +62,20 @@ test("collector share links encode the token consistently", () => {
   );
 });
 
-test("collector range includes today, tomorrow, and 2 days for next 2 days filter", () => {
+test("collector week filter includes today through 7 days and excludes 8 days", () => {
   const loans = [
     makeLoan({ id: "today", currentDueDate: "2026-06-10" }),
     makeLoan({ id: "tomorrow", currentDueDate: "2026-06-11" }),
     makeLoan({ id: "two-days", currentDueDate: "2026-06-12" }),
-    makeLoan({ id: "three-days", currentDueDate: "2026-06-13" }),
+    makeLoan({ id: "seven-days", currentDueDate: "2026-06-17" }),
+    makeLoan({ id: "eight-days", currentDueDate: "2026-06-18" }),
   ];
 
   assert.deepEqual(
-    filterCollectorLoansByRange(loans, "next_2_days", "2026-06-10").map(
+    filterCollectorLoansByRange(loans, "week", "2026-06-10").map(
       (loan) => loan.id,
     ),
-    ["today", "tomorrow", "two-days"],
+    ["today", "tomorrow", "two-days", "seven-days"],
   );
 });
 
@@ -194,6 +195,12 @@ test("collector countdown labels cover today, tomorrow, 2 days, future, overdue,
     daysUntilDue: 2,
     en: "2 DAYS",
     th: "2 วัน",
+    tone: "soon",
+  });
+  assert.deepEqual(getCollectorCountdown("2026-06-17", "2026-06-10"), {
+    daysUntilDue: 7,
+    en: "7 DAYS",
+    th: "7 วัน",
     tone: "soon",
   });
   assert.deepEqual(getCollectorCountdown("2026-06-20", "2026-06-10"), {

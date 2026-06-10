@@ -1,7 +1,7 @@
 import type { LenderProfileThemeColor } from "@/lib/lender-profiles/types";
 import type { Loan } from "@/lib/types/loan";
 
-export type CollectorFilter = "today" | "next_2_days" | "month" | "all";
+export type CollectorFilter = "today" | "week" | "month" | "all";
 
 export type CollectionShareRow = {
   id: string;

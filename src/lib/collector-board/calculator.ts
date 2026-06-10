@@ -20,7 +20,7 @@ export function normalizeCollectorFilter(
 
   if (
     filter === "today" ||
-    filter === "next_2_days" ||
+    filter === "week" ||
     filter === "month" ||
     filter === "all"
   ) {
@@ -141,7 +141,7 @@ export function getCollectorCountdown(
     daysUntilDue,
     en: `${daysUntilDue} DAYS`,
     th: `${daysUntilDue} วัน`,
-    tone: daysUntilDue <= 2 ? "soon" : "future",
+    tone: daysUntilDue <= 7 ? "soon" : "future",
   };
 }
 
@@ -155,10 +155,10 @@ export function getCollectorFilterDateRange(
         startDate: todayDate,
         endDate: todayDate,
       };
-    case "next_2_days":
+    case "week":
       return {
         startDate: todayDate,
-        endDate: addDaysToDateKey(todayDate, 2),
+        endDate: addDaysToDateKey(todayDate, 7),
       };
     case "all":
       return {
